@@ -1,0 +1,16 @@
+{
+  "name": "SSTLink",
+  "short_name": "SSTLink",
+  "description": "Gestión de Seguridad y Salud en el Trabajo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F8FA",
+  "theme_color": "#FF6B2C",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
