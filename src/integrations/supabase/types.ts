@@ -22,7 +22,10 @@ export type Database = {
           nit: string | null
           nivel_proteccion: string | null
           nombre: string
+          num_empleados_directos: number | null
+          sector_industria: string | null
           telefono: string | null
+          tiene_contratistas: boolean | null
           updated_at: string
         }
         Insert: {
@@ -32,7 +35,10 @@ export type Database = {
           nit?: string | null
           nivel_proteccion?: string | null
           nombre: string
+          num_empleados_directos?: number | null
+          sector_industria?: string | null
           telefono?: string | null
+          tiene_contratistas?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -42,7 +48,10 @@ export type Database = {
           nit?: string | null
           nivel_proteccion?: string | null
           nombre?: string
+          num_empleados_directos?: number | null
+          sector_industria?: string | null
           telefono?: string | null
+          tiene_contratistas?: boolean | null
           updated_at?: string
         }
         Relationships: []
