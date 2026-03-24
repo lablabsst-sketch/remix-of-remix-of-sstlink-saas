@@ -1,0 +1,277 @@
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Users, Eye } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
+import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
+interface Trabajador {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  tipo_documento: string;
+  numero_documento: string;
+  cargo: string | null;
+  email: string | null;
+  estado: string;
+  fecha_ingreso: string;
+}
+
+function getInitials(nombres: string, apellidos: string) {
+  return ((nombres[0] || "") + (apellidos[0] || "")).toUpperCase();
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("es-CO", { month: "short", day: "numeric", year: "numeric" });
+}
+
+export default function Trabajadores() {
+  const { empresa } = useAuth();
+  const { toast } = useToast();
+  const [workers, setWorkers] = useState<Trabajador[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filterEstado, setFilterEstado] = useState("todos");
+  const [filterCargo, setFilterCargo] = useState("todos");
+  const [showModal, setShowModal] = useState(false);
+
+  const fetchWorkers = async () => {
+    if (!empresa?.id) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("trabajadores")
+      .select("id, nombres, apellidos, tipo_documento, numero_documento, cargo, email, estado, fecha_ingreso")
+      .eq("empresa_id", empresa.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({ title: "Error al cargar trabajadores", description: error.message, variant: "destructive" });
+    } else {
+      setWorkers(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (empresa?.id) fetchWorkers();
+  }, [empresa?.id]);
+
+  const filtered = workers.filter((w) => {
+    const matchSearch =
+      search === "" ||
+      `${w.nombres} ${w.apellidos}`.toLowerCase().includes(search.toLowerCase()) ||
+      w.numero_documento.includes(search);
+    const matchEstado = filterEstado === "todos" || w.estado === filterEstado;
+    const matchCargo =
+      filterCargo === "todos" ||
+      (filterCargo === "operativo" && w.cargo?.toLowerCase().includes("operativo")) ||
+      (filterCargo === "administrativo" && w.cargo?.toLowerCase().includes("administrativo")) ||
+      (filterCargo !== "operativo" && filterCargo !== "administrativo");
+    return matchSearch && matchEstado && matchCargo;
+  });
+
+  const activeCount = workers.filter((w) => w.estado !== "inactivo").length;
+
+  return (
+    <AppLayout breadcrumbs={["SSTLink", "Trabajadores"]}>
+      <div className="space-y-4 max-w-6xl">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-medium text-foreground">Trabajadores</h1>
+            {loading ? (
+              <Skeleton className="h-4 w-24 mt-1" />
+            ) : (
+              <p className="text-xs text-muted-foreground">{activeCount} activos</p>
+            )}
+          </div>
+          <Button onClick={() => setShowModal(true)} className="gap-1.5 text-xs h-9">
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+            Añadir Trabajador
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-hint" aria-hidden="true" />
+            <Input
+              placeholder="Buscar por nombre o documento..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-8 text-xs bg-background"
+            />
+          </div>
+          <Select value={filterEstado} onValueChange={setFilterEstado}>
+            <SelectTrigger className="w-full sm:w-36 h-8 text-xs">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="aprobado">Aprobado</SelectItem>
+              <SelectItem value="pendiente">Pendiente</SelectItem>
+              <SelectItem value="inactivo">Inactivo</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterCargo} onValueChange={setFilterCargo}>
+            <SelectTrigger className="w-full sm:w-36 h-8 text-xs">
+              <SelectValue placeholder="Cargo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="operativo">Operativo</SelectItem>
+              <SelectItem value="administrativo">Administrativo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : filtered.length === 0 && workers.length === 0 ? (
+          /* Empty state */
+          <div className="bg-card rounded-xl border-[0.5px] border-border p-12 flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
+              <Users className="w-6 h-6 text-primary" aria-hidden="true" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">Aún no tienes trabajadores registrados</p>
+            <p className="text-xs text-muted-foreground mb-4">Comienza agregando tu primer trabajador al sistema.</p>
+            <Button onClick={() => setShowModal(true)} className="gap-1.5 text-xs h-9">
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+              Agregar el primer trabajador
+            </Button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-card rounded-xl border-[0.5px] border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">No se encontraron trabajadores con esos filtros.</p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-card rounded-xl border-[0.5px] border-border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-background">
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Trabajador</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Cargo</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Fecha Ingreso</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Estado</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((w, i) => (
+                    <tr
+                      key={w.id}
+                      className={cn(
+                        "border-b border-border last:border-b-0 transition-colors hover:bg-background",
+                        i % 2 === 0 ? "bg-card" : "bg-background/50"
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="bg-accent text-accent-foreground text-[10px] font-medium">
+                              {getInitials(w.nombres, w.apellidos)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-xs font-medium text-foreground">{w.nombres} {w.apellidos}</p>
+                            <p className="text-[10px] text-muted-foreground">{w.tipo_documento} {w.numero_documento}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-foreground">{w.cargo || "—"}</td>
+                      <td className="px-4 py-3 text-foreground">{formatDate(w.fecha_ingreso)}</td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          className={cn(
+                            "text-[10px] px-2 py-0.5 font-medium border-0",
+                            w.estado === "aprobado"
+                              ? "bg-secondary/10 text-secondary"
+                              : w.estado === "inactivo"
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary/10 text-primary"
+                          )}
+                        >
+                          {w.estado.charAt(0).toUpperCase() + w.estado.slice(1)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          to={`/trabajadores/${w.id}`}
+                          className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+                        >
+                          <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                          Ver perfil
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card Layout */}
+            <div className="md:hidden space-y-2">
+              {filtered.map((w) => (
+                <Link
+                  key={w.id}
+                  to={`/trabajadores/${w.id}`}
+                  className="block bg-card rounded-xl border-[0.5px] border-border p-3 hover:border-muted-foreground/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-9 h-9">
+                      <AvatarFallback className="bg-accent text-accent-foreground text-[10px] font-medium">
+                        {getInitials(w.nombres, w.apellidos)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-foreground truncate">{w.nombres} {w.apellidos}</p>
+                        <Badge
+                          className={cn(
+                            "text-[9px] px-1.5 py-0 font-medium border-0 shrink-0",
+                            w.estado === "aprobado"
+                              ? "bg-secondary/10 text-secondary"
+                              : w.estado === "inactivo"
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary/10 text-primary"
+                          )}
+                        >
+                          {w.estado.charAt(0).toUpperCase() + w.estado.slice(1)}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{w.cargo || "Sin cargo"} · {w.tipo_documento} {w.numero_documento}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <AddWorkerModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        empresaId={empresa?.id ?? null}
+        onSuccess={fetchWorkers}
+      />
+    </AppLayout>
+  );
+}
