@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Trabajadores from "./pages/Trabajadores.tsx";
+import TrabajadorDetail from "./pages/TrabajadorDetail.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trabajadores"
+              element={
+                <ProtectedRoute>
+                  <Trabajadores />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trabajadores/:id"
+              element={
+                <ProtectedRoute>
+                  <TrabajadorDetail />
                 </ProtectedRoute>
               }
             />

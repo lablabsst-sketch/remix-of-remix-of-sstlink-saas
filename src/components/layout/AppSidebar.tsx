@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 const mainItems = [
   { title: "Inicio", url: "/", icon: LayoutDashboard },
-  { title: "Empleados", url: "/empleados", icon: Users },
+  { title: "Trabajadores", url: "/trabajadores", icon: Users },
   { title: "Proveedores", url: "/proveedores", icon: Truck, badge: true },
   { title: "Capacitaciones", url: "/capacitaciones", icon: GraduationCap },
   { title: "Inspecciones", url: "/inspecciones", icon: ClipboardCheck },
