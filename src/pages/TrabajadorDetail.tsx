@@ -141,7 +141,7 @@ export default function TrabajadorDetail() {
             onOpenChange={setEditOpen}
             empresaId={empresa?.id ?? null}
             onSuccess={() => { fetchWorker(); }}
-            editWorker={worker}
+            editWorker={{ ...worker, fecha_ingreso: worker.fecha_ingreso as any, telefono: worker.telefono || "", cargo: worker.cargo || "", email: worker.email || "", tipo_contrato: worker.tipo_contrato || "" }}
           />
         )}
       </div>
