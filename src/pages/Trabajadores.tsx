@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -8,9 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Users, Eye } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
+import { EstadoChip } from "@/components/trabajadores/EstadoChip";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ interface Trabajador {
   email: string | null;
   estado: string;
   fecha_ingreso: string;
+  _highlight?: boolean;
 }
 
 function getInitials(nombres: string, apellidos: string) {
@@ -45,7 +46,7 @@ export default function Trabajadores() {
   const [filterCargo, setFilterCargo] = useState("todos");
   const [showModal, setShowModal] = useState(false);
 
-  const fetchWorkers = async () => {
+  const fetchWorkers = useCallback(async () => {
     if (!empresa?.id) return;
     setLoading(true);
     const { data, error } = await supabase
@@ -60,11 +61,28 @@ export default function Trabajadores() {
       setWorkers(data || []);
     }
     setLoading(false);
-  };
+  }, [empresa?.id]);
 
   useEffect(() => {
     if (empresa?.id) fetchWorkers();
-  }, [empresa?.id]);
+  }, [empresa?.id, fetchWorkers]);
+
+  const handleWorkerAdded = (newWorker?: any) => {
+    if (newWorker) {
+      // Optimistic: add to top with highlight
+      setWorkers(prev => [{ ...newWorker, _highlight: true }, ...prev]);
+      // Remove highlight after 3s
+      setTimeout(() => {
+        setWorkers(prev => prev.map(w => w.id === newWorker.id ? { ...w, _highlight: false } : w));
+      }, 3000);
+    } else {
+      fetchWorkers();
+    }
+  };
+
+  const handleEstadoUpdate = (id: string, newEstado: string) => {
+    setWorkers(prev => prev.map(w => w.id === id ? { ...w, estado: newEstado } : w));
+  };
 
   const filtered = workers.filter((w) => {
     const matchSearch =
@@ -143,7 +161,6 @@ export default function Trabajadores() {
             ))}
           </div>
         ) : filtered.length === 0 && workers.length === 0 ? (
-          /* Empty state */
           <div className="bg-card rounded-xl border-[0.5px] border-border p-12 flex flex-col items-center text-center">
             <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-primary" aria-hidden="true" />
@@ -178,9 +195,10 @@ export default function Trabajadores() {
                     <tr
                       key={w.id}
                       className={cn(
-                        "border-b border-border last:border-b-0 transition-colors hover:bg-background",
+                        "border-b border-border last:border-b-0 transition-all hover:bg-background",
                         i % 2 === 0 ? "bg-card" : "bg-background/50"
                       )}
+                      style={w._highlight ? { borderLeft: "3px solid #16A34A", transition: "border-color 3s ease-out" } : undefined}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -198,18 +216,7 @@ export default function Trabajadores() {
                       <td className="px-4 py-3 text-foreground">{w.cargo || "—"}</td>
                       <td className="px-4 py-3 text-foreground">{formatDate(w.fecha_ingreso)}</td>
                       <td className="px-4 py-3">
-                        <Badge
-                          className={cn(
-                            "text-[10px] px-2 py-0.5 font-medium border-0",
-                            w.estado === "aprobado"
-                              ? "bg-secondary/10 text-secondary"
-                              : w.estado === "inactivo"
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-primary/10 text-primary"
-                          )}
-                        >
-                          {w.estado.charAt(0).toUpperCase() + w.estado.slice(1)}
-                        </Badge>
+                        <EstadoChip workerId={w.id} estado={w.estado} editable={true} onUpdate={handleEstadoUpdate} />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link
@@ -233,6 +240,7 @@ export default function Trabajadores() {
                   key={w.id}
                   to={`/trabajadores/${w.id}`}
                   className="block bg-card rounded-xl border-[0.5px] border-border p-3 hover:border-muted-foreground/30 transition-colors"
+                  style={w._highlight ? { borderLeft: "3px solid #16A34A" } : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="w-9 h-9">
@@ -243,18 +251,7 @@ export default function Trabajadores() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-medium text-foreground truncate">{w.nombres} {w.apellidos}</p>
-                        <Badge
-                          className={cn(
-                            "text-[9px] px-1.5 py-0 font-medium border-0 shrink-0",
-                            w.estado === "aprobado"
-                              ? "bg-secondary/10 text-secondary"
-                              : w.estado === "inactivo"
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-primary/10 text-primary"
-                          )}
-                        >
-                          {w.estado.charAt(0).toUpperCase() + w.estado.slice(1)}
-                        </Badge>
+                        <EstadoChip workerId={w.id} estado={w.estado} editable={false} onUpdate={handleEstadoUpdate} />
                       </div>
                       <p className="text-[10px] text-muted-foreground">{w.cargo || "Sin cargo"} · {w.tipo_documento} {w.numero_documento}</p>
                     </div>
@@ -270,7 +267,7 @@ export default function Trabajadores() {
         open={showModal}
         onOpenChange={setShowModal}
         empresaId={empresa?.id ?? null}
-        onSuccess={fetchWorkers}
+        onSuccess={handleWorkerAdded}
       />
     </AppLayout>
   );

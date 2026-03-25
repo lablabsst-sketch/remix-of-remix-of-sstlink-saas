@@ -68,6 +68,8 @@ export type Database = {
           id: string
           nombres: string
           numero_documento: string
+          telefono: string | null
+          tipo_contrato: string | null
           tipo_documento: string
           updated_at: string
         }
@@ -82,6 +84,8 @@ export type Database = {
           id?: string
           nombres: string
           numero_documento: string
+          telefono?: string | null
+          tipo_contrato?: string | null
           tipo_documento?: string
           updated_at?: string
         }
@@ -96,6 +100,8 @@ export type Database = {
           id?: string
           nombres?: string
           numero_documento?: string
+          telefono?: string | null
+          tipo_contrato?: string | null
           tipo_documento?: string
           updated_at?: string
         }
