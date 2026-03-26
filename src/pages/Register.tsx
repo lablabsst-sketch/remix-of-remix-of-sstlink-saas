@@ -122,7 +122,7 @@ export default function Register() {
           nit,
           sector_industria: sector,
           num_empleados_directos: parseInt(numEmpleados) || 0,
-          tiene_contratistas,
+          tiene_contratistas: tieneContratistas,
         })
         .select("id")
         .single();
