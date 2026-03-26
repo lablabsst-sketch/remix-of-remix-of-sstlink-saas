@@ -12,6 +12,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WorkerData {
   id?: string;
@@ -48,6 +49,7 @@ const emptyForm: WorkerData = {
 
 export function AddWorkerModal({ open, onOpenChange, empresaId, onSuccess, editWorker }: AddWorkerModalProps) {
   const { toast } = useToast();
+  const { user: authUser, empresa } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<WorkerData>(emptyForm);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -89,23 +91,38 @@ export function AddWorkerModal({ open, onOpenChange, empresaId, onSuccess, editW
 
   const isValid = Object.keys(errors).length === 0;
   const showError = (field: string) => (touched[field] || submitted) && errors[field];
+  const resolvedEmpresaId = empresaId ?? empresa?.id ?? null;
 
   const handleBlur = (field: string) => setTouched(p => ({ ...p, [field]: true }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (!isValid || !empresaId) return;
+    if (!isValid) return;
+
+    const empresa_id = resolvedEmpresaId;
+
+    if (!empresa_id) {
+      toast({ title: "No se encontró tu empresa. Recarga la página e intenta de nuevo.", variant: "destructive" });
+      console.error("empresa_id is null — cannot save worker");
+      return;
+    }
 
     setLoading(true);
 
     try {
+      console.log("=== SAVE WORKER DEBUG ===");
+      console.log("1. Auth user:", authUser);
+      console.log("2. empresa_id resolved:", empresa_id);
+      console.log("3. Form data being sent:", form);
+      console.log("4. Supabase client initialized:", !!supabase);
+
       // Check duplicate (skip if editing same doc)
       if (!isEdit || form.numero_documento.trim() !== editWorker?.numero_documento) {
         const { data: existing } = await supabase
           .from("trabajadores")
           .select("id")
-          .eq("empresa_id", empresaId)
+          .eq("empresa_id", empresa_id)
           .eq("numero_documento", form.numero_documento.trim())
           .maybeSingle();
 
@@ -129,24 +146,34 @@ export function AddWorkerModal({ open, onOpenChange, empresaId, onSuccess, editW
       };
 
       if (isEdit) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("trabajadores")
           .update(payload)
-          .eq("id", editWorker!.id);
+          .eq("id", editWorker!.id)
+          .select()
+          .single();
+
+        console.log("5. Insert result - data:", data);
+        console.log("6. Insert result - error:", error);
+        console.log("7. Error details:", JSON.stringify(error, null, 2));
 
         if (error) {
           toast({ title: "Error al actualizar", description: error.message, variant: "destructive" });
         } else {
           toast({ title: "Datos actualizados correctamente." });
           onOpenChange(false);
-          onSuccess();
+          onSuccess(data);
         }
       } else {
         const { data, error } = await supabase
           .from("trabajadores")
-          .insert({ ...payload, empresa_id: empresaId, estado: "pendiente" })
+          .insert({ ...payload, empresa_id, estado: "pendiente" })
           .select()
           .single();
+
+        console.log("5. Insert result - data:", data);
+        console.log("6. Insert result - error:", error);
+        console.log("7. Error details:", JSON.stringify(error, null, 2));
 
         if (error) {
           toast({ title: "No se pudo guardar el trabajador. Intenta nuevamente.", description: error.message, variant: "destructive" });

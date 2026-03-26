@@ -18,6 +18,8 @@ interface Usuario {
   apellido: string | null;
   cargo: string | null;
   empresa_id: string | null;
+  nombre_completo?: string | null;
+  rol?: string | null;
 }
 
 interface AuthState {
@@ -26,6 +28,7 @@ interface AuthState {
   usuario: Usuario | null;
   empresa: Empresa | null;
   loading: boolean;
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -34,6 +37,7 @@ const AuthContext = createContext<AuthState>({
   usuario: null,
   empresa: null,
   loading: true,
+  authError: null,
 });
 
 export function useAuth() {
@@ -47,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     usuario: null,
     empresa: null,
     loading: true,
+    authError: null,
   });
 
   useEffect(() => {
@@ -54,19 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
-          setState(prev => ({ ...prev, session, user: session.user }));
+          setState(prev => ({ ...prev, session, user: session.user, authError: null }));
           // Defer data fetch to avoid deadlocks
-          setTimeout(() => fetchUserData(session.user.id), 0);
+          setTimeout(() => fetchUserData(session.user), 0);
         } else {
-          setState({ session: null, user: null, usuario: null, empresa: null, loading: false });
+          setState({ session: null, user: null, usuario: null, empresa: null, loading: false, authError: null });
         }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setState(prev => ({ ...prev, session, user: session.user }));
-        fetchUserData(session.user.id);
+        setState(prev => ({ ...prev, session, user: session.user, authError: null }));
+        fetchUserData(session.user);
       } else {
         setState(prev => ({ ...prev, loading: false }));
       }
@@ -75,27 +80,139 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchUserData(userId: string) {
-    try {
-      const { data: usuario } = await supabase
-        .from("usuarios")
-        .select("id, nombre, apellido, cargo, empresa_id")
-        .eq("user_id", userId)
+  async function ensureProfileFromMetadata(authUser: User) {
+    const metadata = authUser.user_metadata ?? {};
+    const empresaNombre = typeof metadata.empresa_nombre === "string" ? metadata.empresa_nombre.trim() : "";
+    const empresaNit = typeof metadata.empresa_nit === "string" ? metadata.empresa_nit.trim() : null;
+    const empresaSector = typeof metadata.empresa_sector === "string" ? metadata.empresa_sector.trim() : null;
+    const empresaNumEmpleados = typeof metadata.empresa_num_empleados === "string" ? Number.parseInt(metadata.empresa_num_empleados, 10) || 0 : 0;
+    const empresaTieneContratistas = metadata.empresa_tiene_contratistas === "true" || metadata.empresa_tiene_contratistas === true;
+    const fullName = typeof metadata.nombre === "string" && metadata.nombre.trim().length > 0
+      ? metadata.nombre.trim()
+      : authUser.email ?? "Usuario";
+    const [firstName, ...restName] = fullName.split(" ").filter(Boolean);
+    const nombre = firstName || fullName;
+    const apellido = restName.join(" ") || null;
+
+    if (!empresaNombre) {
+      return { usuario: null, empresa: null, error: "Perfil de usuario no encontrado. Contacta soporte." };
+    }
+
+    let empresa: Empresa | null = null;
+
+    if (empresaNit) {
+      const { data: empresaExistente } = await supabase
+        .from("empresas")
+        .select("id, nombre, nit, nivel_proteccion, num_empleados_directos, sector_industria, tiene_contratistas")
+        .eq("nit", empresaNit)
         .maybeSingle();
 
+      empresa = empresaExistente;
+    }
+
+    if (!empresa) {
+      const { data: empresaCreada, error: empresaError } = await supabase
+        .from("empresas")
+        .insert({
+          nombre: empresaNombre,
+          nit: empresaNit,
+          sector_industria: empresaSector,
+          num_empleados_directos: empresaNumEmpleados,
+          tiene_contratistas: empresaTieneContratistas,
+        })
+        .select("id, nombre, nit, nivel_proteccion, num_empleados_directos, sector_industria, tiene_contratistas")
+        .single();
+
+      if (empresaError || !empresaCreada) {
+        return { usuario: null, empresa: null, error: empresaError?.message ?? "Empresa no encontrada. Contacta soporte." };
+      }
+
+      empresa = empresaCreada;
+    }
+
+    const nombreCompleto = [nombre, apellido].filter(Boolean).join(" ");
+
+    const { data: usuarioCreado, error: usuarioError } = await supabase
+      .from("usuarios")
+      .insert({
+        user_id: authUser.id,
+        auth_user_id: authUser.id,
+        empresa_id: empresa.id,
+        nombre,
+        apellido,
+        cargo: null,
+        nombre_completo: nombreCompleto,
+        email: authUser.email ?? "",
+        rol: "administrador",
+      })
+      .select("id, nombre, apellido, cargo, empresa_id, nombre_completo, rol")
+      .single();
+
+    if (usuarioError || !usuarioCreado) {
+      return { usuario: null, empresa: null, error: usuarioError?.message ?? "Perfil de usuario no encontrado. Contacta soporte." };
+    }
+
+    await supabase.from("user_roles").insert({ user_id: authUser.id, role: "administrador" });
+
+    return { usuario: usuarioCreado, empresa, error: null };
+  }
+
+  async function fetchUserData(authUser: User) {
+    try {
+      console.log("=== DASHBOARD LOAD DEBUG ===");
+      console.log("A. Auth user id:", authUser?.id);
+      console.log("B. Query: usuarios where auth_user_id =", authUser?.id);
+
+      const { data: usuarioData, error: usuarioError } = await supabase
+        .from("usuarios")
+        .select("id, nombre, apellido, cargo, empresa_id, nombre_completo, rol")
+        .or(`auth_user_id.eq.${authUser.id},user_id.eq.${authUser.id}`)
+        .maybeSingle();
+
+      console.log("C. Usuario result:", usuarioData, usuarioError);
+
+      let usuario = usuarioData;
+
+      if (!usuario) {
+        const repaired = await ensureProfileFromMetadata(authUser);
+
+        if (repaired.error || !repaired.usuario || !repaired.empresa) {
+          console.error("usuario not found for auth_user_id:", authUser.id, usuarioError ?? repaired.error);
+          setState(prev => ({ ...prev, usuario: null, empresa: null, loading: false, authError: repaired.error ?? "Perfil de usuario no encontrado. Contacta soporte." }));
+          return;
+        }
+
+        console.log("C. Usuario result:", repaired.usuario, null);
+        console.log("D. Empresa result:", repaired.empresa, null);
+        setState(prev => ({ ...prev, usuario: repaired.usuario, empresa: repaired.empresa, loading: false, authError: null }));
+        return;
+      }
+
       let empresa: Empresa | null = null;
-      if (usuario?.empresa_id) {
-        const { data } = await supabase
+      let empresaError: Error | null = null;
+
+      if (usuario.empresa_id) {
+        const { data, error } = await supabase
           .from("empresas")
           .select("id, nombre, nit, nivel_proteccion, num_empleados_directos, sector_industria, tiene_contratistas")
           .eq("id", usuario.empresa_id)
           .maybeSingle();
+
         empresa = data;
+        empresaError = error;
       }
 
-      setState(prev => ({ ...prev, usuario, empresa, loading: false }));
-    } catch {
-      setState(prev => ({ ...prev, loading: false }));
+      console.log("D. Empresa result:", empresa, empresaError);
+
+      if (!empresa) {
+        console.error("empresa not found:", usuario.empresa_id, empresaError);
+        setState(prev => ({ ...prev, usuario, empresa: null, loading: false, authError: "Empresa no encontrada. Contacta soporte." }));
+        return;
+      }
+
+      setState(prev => ({ ...prev, usuario, empresa, loading: false, authError: null }));
+    } catch (error) {
+      setState(prev => ({ ...prev, loading: false, authError: error instanceof Error ? error.message : "Error cargando tu perfil." }));
     }
   }
 

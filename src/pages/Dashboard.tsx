@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const { usuario, empresa, loading } = useAuth();
+  const { usuario, empresa, user, loading, authError } = useAuth();
   const { toast } = useToast();
   const [entered, setEntered] = useState(false);
 
@@ -19,14 +19,19 @@ export default function Dashboard() {
   }, [loading]);
 
   useEffect(() => {
-    if (!loading && !usuario && !empresa) {
+    if (!user?.id) {
+      console.log("Dashboard: waiting for user context...");
+      return;
+    }
+
+    if (!loading && authError) {
       toast({
         title: "Error al cargar los datos",
-        description: "Intenta recargar la página.",
+        description: authError,
         variant: "destructive",
       });
     }
-  }, [loading, usuario, empresa]);
+  }, [loading, authError, user?.id]);
 
   const currentMonth = new Date().toLocaleDateString("es-CO", { month: "long", year: "numeric" });
   const currentMonthUpper = new Date().toLocaleDateString("es-CO", { month: "short", year: "numeric" }).toUpperCase();

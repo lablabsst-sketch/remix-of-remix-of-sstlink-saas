@@ -94,12 +94,10 @@ export default function Register() {
   const handleFinish = async () => {
     setLoading(true);
     try {
-      // All empresa + profile + role creation handled by handle_new_user trigger
-      const { error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
           data: {
             nombre: fullName,
             empresa_nombre: nombre,
@@ -111,6 +109,49 @@ export default function Register() {
         },
       });
       if (authError) throw authError;
+
+      const authUserId = authData.user?.id;
+      if (!authUserId) {
+        throw new Error("No se pudo crear la sesión inicial del usuario.");
+      }
+
+      const { data: empresaData, error: empresaError } = await supabase
+        .from("empresas")
+        .insert({
+          nombre,
+          nit,
+          sector_industria: sector,
+          num_empleados_directos: parseInt(numEmpleados) || 0,
+          tiene_contratistas: tieneContratistas,
+        })
+        .select("id")
+        .single();
+
+      if (empresaError || !empresaData) throw empresaError ?? new Error("No se pudo crear la empresa.");
+
+      const [firstName, ...restName] = fullName.trim().split(" ").filter(Boolean);
+      const apellido = restName.join(" ") || null;
+
+      const { error: usuarioError } = await supabase
+        .from("usuarios")
+        .insert({
+          user_id: authUserId,
+          auth_user_id: authUserId,
+          empresa_id: empresaData.id,
+          nombre: firstName || fullName.trim(),
+          apellido,
+          nombre_completo: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          rol: "administrador",
+        });
+
+      if (usuarioError) throw usuarioError;
+
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: authUserId, role: "administrador" });
+
+      if (roleError) throw roleError;
 
       setSuccess(true);
     } catch (err: any) {
