@@ -64,7 +64,7 @@ export type Database = {
           email: string | null
           empresa_id: string
           estado: string
-          fecha_ingreso: string
+          fecha_ingreso: string | null
           id: string
           nombres: string
           numero_documento: string
@@ -80,7 +80,7 @@ export type Database = {
           email?: string | null
           empresa_id: string
           estado?: string
-          fecha_ingreso?: string
+          fecha_ingreso?: string | null
           id?: string
           nombres: string
           numero_documento: string
@@ -96,7 +96,7 @@ export type Database = {
           email?: string | null
           empresa_id?: string
           estado?: string
-          fecha_ingreso?: string
+          fecha_ingreso?: string | null
           id?: string
           nombres?: string
           numero_documento?: string
@@ -136,34 +136,46 @@ export type Database = {
       usuarios: {
         Row: {
           apellido: string | null
+          auth_user_id: string
           avatar_url: string | null
           cargo: string | null
           created_at: string
+          email: string
           empresa_id: string | null
           id: string
           nombre: string
+          nombre_completo: string
+          rol: string
           updated_at: string
           user_id: string
         }
         Insert: {
           apellido?: string | null
+          auth_user_id: string
           avatar_url?: string | null
           cargo?: string | null
           created_at?: string
+          email: string
           empresa_id?: string | null
           id?: string
           nombre: string
+          nombre_completo: string
+          rol?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           apellido?: string | null
+          auth_user_id?: string
           avatar_url?: string | null
           cargo?: string | null
           created_at?: string
+          email?: string
           empresa_id?: string | null
           id?: string
           nombre?: string
+          nombre_completo?: string
+          rol?: string
           updated_at?: string
           user_id?: string
         }
@@ -182,6 +194,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_assign_initial_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_create_empresa: { Args: { _user_id: string }; Returns: boolean }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
