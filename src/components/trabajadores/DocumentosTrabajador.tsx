@@ -7,13 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Upload, Download, Trash2, FileText, Loader2, Calendar, AlertTriangle, CheckCircle2, Clock
 } from "lucide-react";
-import { format, differenceInDays, isPast } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 
-// Tipos de documentos para trabajadores
 const TIPOS_DOCUMENTO = [
   { key: "cedula",      label: "Documento de identidad",       icon: "🪪", requiereVencimiento: false },
   { key: "arl",         label: "ARL",                          icon: "🛡️", requiereVencimiento: true  },
@@ -29,13 +28,13 @@ const TIPOS_DOCUMENTO = [
   { key: "otro",        label: "Otro documento",               icon: "📎", requiereVencimiento: false },
 ];
 
+// Map DB row to our internal shape
 interface Documento {
   id: string;
   tipo: string;
-  archivo_url: string;
+  url: string | null;
   fecha_vencimiento: string | null;
-  fecha_creacion: string | null;
-  vigente: boolean;
+  estado: string;
   created_at: string;
 }
 
@@ -65,7 +64,7 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
   const fetchDocumentos = async () => {
     const { data } = await supabase
       .from("documentos_trabajador")
-      .select("*")
+      .select("id, tipo, url, fecha_vencimiento, estado, created_at")
       .eq("trabajador_id", trabajadorId)
       .order("created_at", { ascending: false });
     setDocumentos(data ?? []);
@@ -86,20 +85,20 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
       const { data: { publicUrl } } = supabase.storage.from("documentos").getPublicUrl(path);
       const venc = fechaVenc[tipo];
 
-      // Marcar anterior como no vigente
-      const anterior = documentos.find(d => d.tipo === tipo && d.vigente);
+      // Mark previous as replaced
+      const anterior = documentos.find(d => d.tipo === tipo && d.estado === "vigente");
       if (anterior) {
-        await supabase.from("documentos_trabajador").update({ vigente: false }).eq("id", anterior.id);
+        await supabase.from("documentos_trabajador").update({ estado: "reemplazado" }).eq("id", anterior.id);
       }
 
       const { error: dbError } = await supabase.from("documentos_trabajador").insert({
         empresa_id: empresa.id,
         trabajador_id: trabajadorId,
+        nombre: TIPOS_DOCUMENTO.find(t => t.key === tipo)?.label ?? tipo,
         tipo,
-        archivo_url: publicUrl,
+        url: publicUrl,
         fecha_vencimiento: venc ? format(venc, "yyyy-MM-dd") : null,
-        fecha_creacion: new Date().toISOString().split("T")[0],
-        vigente: true,
+        estado: "vigente",
       });
       if (dbError) throw dbError;
 
@@ -149,7 +148,7 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
       <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={onFileChange} />
 
       {TIPOS_DOCUMENTO.map(tipo => {
-        const docVigente = documentos.find(d => d.tipo === tipo.key && d.vigente);
+        const docVigente = documentos.find(d => d.tipo === tipo.key && d.estado === "vigente");
         const isUploading = uploading === tipo.key;
 
         return (
@@ -157,10 +156,8 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
             "rounded-lg border p-3 flex items-center gap-3 transition-colors",
             docVigente ? "bg-card border-border" : "bg-muted/30 border-dashed border-muted-foreground/20"
           )}>
-            {/* Ícono */}
             <span className="text-lg shrink-0">{tipo.icon}</span>
 
-            {/* Info */}
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-foreground">{tipo.label}</p>
               {docVigente ? (
@@ -171,20 +168,16 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
                       {format(new Date(docVigente.fecha_vencimiento + "T00:00:00"), "dd MMM yyyy", { locale: es })}
                     </span>
                   )}
-                  {docVigente.fecha_creacion && (
-                    <span className="text-[10px] text-muted-foreground/60">
-                      Subido {format(new Date(docVigente.created_at), "dd MMM yyyy", { locale: es })}
-                    </span>
-                  )}
+                  <span className="text-[10px] text-muted-foreground/60">
+                    Subido {format(new Date(docVigente.created_at), "dd MMM yyyy", { locale: es })}
+                  </span>
                 </div>
               ) : (
                 <p className="text-[10px] text-muted-foreground mt-0.5">Sin documento</p>
               )}
             </div>
 
-            {/* Acciones */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* Fecha vencimiento antes de subir */}
               {tipo.requiereVencimiento && !docVigente && (
                 <Popover>
                   <PopoverTrigger asChild>
@@ -203,7 +196,7 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
 
               {docVigente && (
                 <>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(docVigente.archivo_url, tipo.key)}>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(docVigente.url ?? "", tipo.key)}>
                     <Download className="w-3.5 h-3.5 text-muted-foreground" />
                   </Button>
                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDelete(docVigente)}>
@@ -223,14 +216,14 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
         );
       })}
 
-      {/* Historial colapsable */}
-      {documentos.filter(d => !d.vigente).length > 0 && (
+      {/* Historial */}
+      {documentos.filter(d => d.estado !== "vigente").length > 0 && (
         <details className="mt-3">
           <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground">
-            Ver historial ({documentos.filter(d => !d.vigente).length} versiones anteriores)
+            Ver historial ({documentos.filter(d => d.estado !== "vigente").length} versiones anteriores)
           </summary>
           <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-muted">
-            {documentos.filter(d => !d.vigente).map(d => {
+            {documentos.filter(d => d.estado !== "vigente").map(d => {
               const tipo = TIPOS_DOCUMENTO.find(t => t.key === d.tipo);
               return (
                 <div key={d.id} className="flex items-center justify-between py-1.5">
@@ -241,7 +234,7 @@ export function DocumentosTrabajador({ trabajadorId, trabajadorNombre }: Props) 
                       {format(new Date(d.created_at), "dd/MM/yyyy", { locale: es })}
                     </span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDownload(d.archivo_url, d.tipo)}>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDownload(d.url ?? "", d.tipo)}>
                     <Download className="w-3 h-3 text-muted-foreground" />
                   </Button>
                 </div>

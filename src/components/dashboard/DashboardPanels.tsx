@@ -55,7 +55,7 @@ export function DashboardPanels({ loading, data }: Props) {
                   </div>
                   <div>
                     <p className="text-[12px] font-medium">{c.nombre}</p>
-                    {c.actividad && <p className="text-[10px] text-muted-foreground">{c.actividad}</p>}
+                    {c.estado && <p className="text-[10px] text-muted-foreground">{c.estado}</p>}
                   </div>
                 </div>
                 <Badge variant="outline" className="text-[10px] h-5 border-emerald-200 text-emerald-700 bg-emerald-50">Activo</Badge>
