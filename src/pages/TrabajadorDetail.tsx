@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Pencil, User, Briefcase, Heart, FileText } from "lucide-react";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
+import { DocumentosTrabajador } from "@/components/trabajadores/DocumentosTrabajador";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -228,10 +229,14 @@ export default function TrabajadorDetail() {
 
           {/* TAB 4 — DOCUMENTOS */}
           <TabsContent value="documentos" className="mt-4">
-            <div className="rounded-lg border bg-card p-4 text-center py-10">
-              <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm font-medium text-muted-foreground">Módulo de documentos</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Próximamente — carga y gestión de documentos del trabajador con fechas de vencimiento.</p>
+            <div className="rounded-lg border bg-card p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold">Documentos del trabajador</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Sube PDF o imágenes — máx. 10MB por archivo</p>
+                </div>
+              </div>
+              <DocumentosTrabajador trabajadorId={worker.id} trabajadorNombre={fullName} />
             </div>
           </TabsContent>
         </Tabs>

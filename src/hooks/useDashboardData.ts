@@ -6,7 +6,7 @@ export interface DashboardData {
   trabajadoresAprobados: number;
   trabajadoresPendientes: number;
   totalContratistas: number;
-  contratistas: { id: string; nombre: string; actividad: string | null; activo: boolean }[];
+  contratistas: { id: string; nombre: string; estado: string; }[];
   accidentesAnio: number;
   diasPerdidosAnio: number;
   capacitacionesPendientes: number;
@@ -49,8 +49,8 @@ export function useDashboardData(empresaId: string | null | undefined) {
         { data: planItems },
       ] = await Promise.all([
         supabase.from("trabajadores").select("id, estado").eq("empresa_id", empresaId).eq("eliminado", false),
-        supabase.from("contratistas").select("id, nombre, actividad, activo").eq("empresa_id", empresaId).eq("activo", true).limit(5),
-        supabase.from("accidentes").select("id, dias_perdidos").eq("empresa_id", empresaId).gte("fecha", inicioAnio),
+        supabase.from("contratistas").select("id, nombre, estado").eq("empresa_id", empresaId).eq("estado", "activo").limit(5),
+        supabase.from("accidentes").select("id, dias_incapacidad").eq("empresa_id", empresaId).gte("fecha", inicioAnio),
         supabase.from("capacitaciones").select("id, estado").eq("empresa_id", empresaId),
         supabase.from("documentos_empresa").select("id, fecha_vencimiento").eq("empresa_id", empresaId).not("fecha_vencimiento", "is", null),
         supabase.from("documentos_trabajador").select("id, fecha_vencimiento").eq("empresa_id", empresaId).not("fecha_vencimiento", "is", null),
@@ -61,7 +61,7 @@ export function useDashboardData(empresaId: string | null | undefined) {
       const trabajadoresAprobados = trabajadores?.filter(t => t.estado === "aprobado" || t.estado === "activo").length ?? 0;
       const trabajadoresPendientes = trabajadores?.filter(t => t.estado === "pendiente").length ?? 0;
       const accidentesAnio = accidentes?.length ?? 0;
-      const diasPerdidosAnio = accidentes?.reduce((s, a) => s + (a.dias_perdidos ?? 0), 0) ?? 0;
+      const diasPerdidosAnio = accidentes?.reduce((s, a) => s + (a.dias_incapacidad ?? 0), 0) ?? 0;
       const capacitacionesPendientes = caps?.filter(c => c.estado === "pendiente").length ?? 0;
       const capacitacionesCompletadas = caps?.filter(c => c.estado === "completado").length ?? 0;
       const todosDocs = [...(docsEmp ?? []), ...(docsTrab ?? [])];
