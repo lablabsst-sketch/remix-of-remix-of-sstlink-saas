@@ -62,9 +62,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden md:flex flex-col w-16 bg-surface border-r-[0.5px] border-border items-center py-4 gap-2 shrink-0">
       {/* Logo */}
-      <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center mb-4">
-        <span className="text-primary-foreground font-medium text-sm">S</span>
-      </div>
+      <img src={logoSstlink} alt="SSTLink" className="w-9 h-9 object-contain mb-4" />
 
       {/* Main nav */}
       <div className="flex flex-col items-center gap-1 flex-1">

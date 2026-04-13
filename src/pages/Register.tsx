@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logoSstlink from "@/assets/logo-sstlink.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,10 +192,7 @@ export default function Register() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-medium text-lg">S</span>
-          </div>
-          <span className="text-xl font-medium text-foreground">SSTLink</span>
+          <img src={logoSstlink} alt="SSTLink" className="h-10 w-auto" />
         </div>
 
         <div className="bg-card rounded-xl border-[0.5px] border-border p-6">
