@@ -7,6 +7,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import logoSstlink from "@/assets/logo-sstlink.png";
 
 const mainItems = [
   { title: "Inicio", url: "/", icon: LayoutDashboard },
