@@ -27,7 +27,6 @@ function LandingNav() {
         <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
           <a href="#features" className="hover:text-foreground transition-colors">Características</a>
           <a href="#pricing" className="hover:text-foreground transition-colors">Planes</a>
-          <a href="#testimonials" className="hover:text-foreground transition-colors">Testimonios</a>
           <a href="#blog" className="hover:text-foreground transition-colors">Blog</a>
         </div>
 
