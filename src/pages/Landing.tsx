@@ -5,6 +5,10 @@ import {
   BookOpen, GraduationCap, ArrowRight, Check, Star, ExternalLink,
   ChevronRight, Mail, MapPin, Phone
 } from "lucide-react";
+import { useScrollFadeIn } from "@/hooks/useScrollFadeIn";
+
+const fadeClass = (visible: boolean) =>
+  `transition-all duration-700 ease-out ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`;
 
 /* ───────── Navbar ───────── */
 function LandingNav() {
@@ -51,8 +55,9 @@ function LandingNav() {
 
 /* ───────── Hero ───────── */
 function HeroSection() {
+  const { ref, isVisible } = useScrollFadeIn(0.1);
   return (
-    <section className="bg-background py-16 md:py-24 px-4">
+    <section ref={ref} className={`bg-background py-16 md:py-24 px-4 ${fadeClass(isVisible)}`}>
       <div className="max-w-4xl mx-auto text-center space-y-6">
         <span className="inline-block text-xs font-medium text-primary bg-accent px-3 py-1 rounded-full">
           Gestión SG-SST para Colombia 🇨🇴
@@ -94,8 +99,9 @@ const features = [
 ];
 
 function FeaturesSection() {
+  const { ref, isVisible } = useScrollFadeIn();
   return (
-    <section id="features" className="py-16 md:py-20 px-4 bg-surface">
+    <section ref={ref} id="features" className={`py-16 md:py-20 px-4 bg-surface ${fadeClass(isVisible)}`}>
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground">Todo lo que necesitas para tu SG-SST</h2>
@@ -149,8 +155,9 @@ const plans = [
 ];
 
 function PricingSection() {
+  const { ref, isVisible } = useScrollFadeIn();
   return (
-    <section id="pricing" className="py-16 md:py-20 px-4 bg-background">
+    <section ref={ref} id="pricing" className={`py-16 md:py-20 px-4 bg-background ${fadeClass(isVisible)}`}>
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground">Planes que se adaptan a tu empresa</h2>
@@ -228,8 +235,9 @@ const testimonials = [
 ];
 
 function TestimonialsSection() {
+  const { ref, isVisible } = useScrollFadeIn();
   return (
-    <section id="testimonials" className="py-16 md:py-20 px-4 bg-surface">
+    <section ref={ref} id="testimonials" className={`py-16 md:py-20 px-4 bg-surface ${fadeClass(isVisible)}`}>
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground">Lo que dicen nuestros clientes</h2>
@@ -258,8 +266,9 @@ function TestimonialsSection() {
 
 /* ───────── CTA ───────── */
 function CTASection() {
+  const { ref, isVisible } = useScrollFadeIn();
   return (
-    <section className="py-16 md:py-20 px-4 bg-background">
+    <section ref={ref} className={`py-16 md:py-20 px-4 bg-background ${fadeClass(isVisible)}`}>
       <div className="max-w-3xl mx-auto text-center bg-[hsl(var(--surface-dark))] rounded-2xl p-8 md:p-12 space-y-5">
         <h2 className="text-2xl md:text-3xl font-bold text-white">
           ¿Listo para digitalizar tu SG-SST?
