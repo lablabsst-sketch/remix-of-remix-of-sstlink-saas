@@ -5,6 +5,10 @@ import {
   BookOpen, GraduationCap, ArrowRight, Check, Star, ExternalLink,
   ChevronRight, Mail, MapPin, Phone
 } from "lucide-react";
+import { useScrollFadeIn } from "@/hooks/useScrollFadeIn";
+
+const fadeClass = (visible: boolean) =>
+  `transition-all duration-700 ease-out ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`;
 
 /* ───────── Navbar ───────── */
 function LandingNav() {
