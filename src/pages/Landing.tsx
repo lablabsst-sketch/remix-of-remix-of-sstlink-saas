@@ -298,7 +298,7 @@ function Footer() {
         {/* Brand */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <img src={logoSstlink} alt="SSTLink" className="h-7 w-auto brightness-0 invert" />
+            <img src={logoSstlink} alt="SSTLink" className="h-7 w-auto" />
           </div>
           <p className="text-xs text-white/50 leading-relaxed">
             Plataforma líder para la gestión del Sistema de Seguridad y Salud en el Trabajo (SG-SST) en Colombia.
