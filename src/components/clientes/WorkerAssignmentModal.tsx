@@ -65,19 +65,16 @@ export function WorkerAssignmentModal({ open, onClose, clienteId, clienteNombre,
     const toAdd = [...assigned].filter(id => !original.has(id));
     const toRemove = [...original].filter(id => !assigned.has(id));
 
-    const ops: Promise<unknown>[] = [];
     if (toAdd.length > 0) {
-      ops.push(supabase.from("trabajadores_cliente").upsert(
+      await supabase.from("trabajadores_cliente").upsert(
         toAdd.map(trabajador_id => ({ empresa_id: empresa.id, cliente_id: clienteId, trabajador_id, activo: true })),
         { onConflict: "cliente_id,trabajador_id" }
-      ));
+      );
     }
     if (toRemove.length > 0) {
-      ops.push(supabase.from("trabajadores_cliente").delete()
-        .eq("cliente_id", clienteId).in("trabajador_id", toRemove));
+      await supabase.from("trabajadores_cliente").delete()
+        .eq("cliente_id", clienteId).in("trabajador_id", toRemove);
     }
-
-    await Promise.all(ops);
     setSaving(false);
     toast({ title: "Trabajadores actualizados" });
     onSaved();

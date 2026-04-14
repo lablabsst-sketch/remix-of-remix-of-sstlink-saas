@@ -12,6 +12,7 @@ import logoSstlink from "@/assets/logo-sstlink.png";
 const mainItems = [
   { title: "Inicio", url: "/", icon: LayoutDashboard },
   { title: "Trabajadores", url: "/trabajadores", icon: Users },
+  { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Proveedores", url: "/proveedores", icon: Truck, badge: true },
   { title: "Capacitaciones", url: "/capacitaciones", icon: GraduationCap },
   { title: "Inspecciones", url: "/inspecciones", icon: ClipboardCheck },
