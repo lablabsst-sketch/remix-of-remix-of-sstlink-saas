@@ -42,7 +42,7 @@ export default function Login() {
         password: result.data.password,
       });
       if (error) throw error;
-      navigate("/");
+      navigate("/dashboard");
     } catch (err: any) {
       toast({
         title: "Error al ingresar",
