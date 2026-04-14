@@ -11,6 +11,8 @@ import Register from "./pages/Register.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Trabajadores from "./pages/Trabajadores.tsx";
 import TrabajadorDetail from "./pages/TrabajadorDetail.tsx";
+import Clientes from "./pages/Clientes.tsx";
+import Portal from "./pages/Portal.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -51,6 +53,15 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/clientes"
+              element={
+                <ProtectedRoute>
+                  <Clientes />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/portal" element={<Portal />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

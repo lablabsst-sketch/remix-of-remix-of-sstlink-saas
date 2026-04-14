@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, Truck, GraduationCap,
   ClipboardCheck, BarChart3, FileText, CalendarRange,
-  Building2, MessageCircle
+  Building2, MessageCircle, UserCheck
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -12,6 +12,7 @@ import logoSstlink from "@/assets/logo-sstlink.png";
 const mainItems = [
   { title: "Inicio", url: "/", icon: LayoutDashboard },
   { title: "Trabajadores", url: "/trabajadores", icon: Users },
+  { title: "Clientes", url: "/clientes", icon: UserCheck },
   { title: "Proveedores", url: "/proveedores", icon: Truck, badge: true },
   { title: "Capacitaciones", url: "/capacitaciones", icon: GraduationCap },
   { title: "Inspecciones", url: "/inspecciones", icon: ClipboardCheck },

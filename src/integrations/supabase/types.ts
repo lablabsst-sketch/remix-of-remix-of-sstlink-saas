@@ -350,6 +350,62 @@ export type Database = {
           },
         ]
       }
+      clientes_portal: {
+        Row: {
+          activo: boolean
+          contacto: string | null
+          created_at: string
+          email: string | null
+          empresa_id: string
+          id: string
+          nit_cedula: string
+          nombre: string
+          notas: string | null
+          telefono: string | null
+          tipo: string
+          token_acceso: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          contacto?: string | null
+          created_at?: string
+          email?: string | null
+          empresa_id: string
+          id?: string
+          nit_cedula: string
+          nombre: string
+          notas?: string | null
+          telefono?: string | null
+          tipo?: string
+          token_acceso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          contacto?: string | null
+          created_at?: string
+          email?: string | null
+          empresa_id?: string
+          id?: string
+          nit_cedula?: string
+          nombre?: string
+          notas?: string | null
+          telefono?: string | null
+          tipo?: string
+          token_acceso?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_portal_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratistas: {
         Row: {
           contacto: string | null
@@ -390,6 +446,52 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contratistas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docs_empresa_cliente: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          documento_id: string
+          empresa_id: string
+          id: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          documento_id: string
+          empresa_id: string
+          id?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          documento_id?: string
+          empresa_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docs_empresa_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_portal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docs_empresa_cliente_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "documentos_empresa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docs_empresa_cliente_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
@@ -1129,6 +1231,55 @@ export type Database = {
           },
         ]
       }
+      trabajadores_cliente: {
+        Row: {
+          activo: boolean
+          cliente_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          trabajador_id: string
+        }
+        Insert: {
+          activo?: boolean
+          cliente_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          trabajador_id: string
+        }
+        Update: {
+          activo?: boolean
+          cliente_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          trabajador_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trabajadores_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_portal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trabajadores_cliente_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trabajadores_cliente_trabajador_id_fkey"
+            columns: ["trabajador_id"]
+            isOneToOne: false
+            referencedRelation: "trabajadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1264,6 +1415,7 @@ export type Database = {
         Returns: boolean
       }
       can_create_empresa: { Args: { _user_id: string }; Returns: boolean }
+      get_portal_cliente: { Args: { p_nit_cedula: string }; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
