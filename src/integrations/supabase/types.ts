@@ -499,6 +499,66 @@ export type Database = {
           },
         ]
       }
+      docs_estandar: {
+        Row: {
+          created_at: string
+          doc_nombre: string | null
+          doc_subido_en: string | null
+          doc_url: string | null
+          empresa_id: string
+          estado: string
+          estandar_id: string
+          id: string
+          plantilla_nombre: string | null
+          plantilla_subido_en: string | null
+          plantilla_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          doc_nombre?: string | null
+          doc_subido_en?: string | null
+          doc_url?: string | null
+          empresa_id: string
+          estado?: string
+          estandar_id: string
+          id?: string
+          plantilla_nombre?: string | null
+          plantilla_subido_en?: string | null
+          plantilla_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          doc_nombre?: string | null
+          doc_subido_en?: string | null
+          doc_url?: string | null
+          empresa_id?: string
+          estado?: string
+          estandar_id?: string
+          id?: string
+          plantilla_nombre?: string | null
+          plantilla_subido_en?: string | null
+          plantilla_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docs_estandar_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docs_estandar_estandar_id_fkey"
+            columns: ["estandar_id"]
+            isOneToOne: false
+            referencedRelation: "phva_estandares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentos_empresa: {
         Row: {
           created_at: string
@@ -703,6 +763,38 @@ export type Database = {
             foreignKeyName: "empleados_contratista_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresa_estandares: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          nivel: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nivel?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nivel?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_estandares_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
@@ -1017,6 +1109,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      phva_estandares: {
+        Row: {
+          aplica_21: boolean
+          aplica_60: boolean
+          aplica_7: boolean
+          codigo: string
+          created_at: string
+          fase: string
+          grupo: string
+          id: string
+          nombre: string
+          orden: number
+          puntaje: number
+        }
+        Insert: {
+          aplica_21?: boolean
+          aplica_60?: boolean
+          aplica_7?: boolean
+          codigo: string
+          created_at?: string
+          fase: string
+          grupo: string
+          id?: string
+          nombre: string
+          orden?: number
+          puntaje?: number
+        }
+        Update: {
+          aplica_21?: boolean
+          aplica_60?: boolean
+          aplica_7?: boolean
+          codigo?: string
+          created_at?: string
+          fase?: string
+          grupo?: string
+          id?: string
+          nombre?: string
+          orden?: number
+          puntaje?: number
+        }
+        Relationships: []
       }
       plan_mejora: {
         Row: {
@@ -1415,6 +1549,7 @@ export type Database = {
         Returns: boolean
       }
       can_create_empresa: { Args: { _user_id: string }; Returns: boolean }
+      get_cumplimiento_phva: { Args: { p_empresa_id: string }; Returns: Json }
       get_portal_cliente: { Args: { p_nit_cedula: string }; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
