@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface PhvaFase { fase: string; total: number; completados: number; en_progreso: number; porcentaje: number; }
+export interface CumplimientoPhva { porcentaje: number; total: number; completados: number; nivel: string; fases: PhvaFase[]; }
+
 export interface DashboardData {
   totalTrabajadores: number;
   trabajadoresAprobados: number;
@@ -15,6 +18,7 @@ export interface DashboardData {
   docsVencidos: number;
   nivelProteccion: number;
   itemsPlanMejora: { total: number; completados: number };
+  cumplimientoPhva: CumplimientoPhva | null;
 }
 
 const empty: DashboardData = {
@@ -23,6 +27,7 @@ const empty: DashboardData = {
   capacitacionesPendientes: 0, capacitacionesCompletadas: 0,
   docsProximosVencer: 0, docsVencidos: 0, nivelProteccion: 0,
   itemsPlanMejora: { total: 0, completados: 0 },
+  cumplimientoPhva: null,
 };
 
 export function useDashboardData(empresaId: string | null | undefined) {
@@ -47,6 +52,7 @@ export function useDashboardData(empresaId: string | null | undefined) {
         { data: docsEmp },
         { data: docsTrab },
         { data: planItems },
+        { data: cumplPhva },
       ] = await Promise.all([
         supabase.from("trabajadores").select("id, estado").eq("empresa_id", empresaId).eq("eliminado", false),
         supabase.from("contratistas").select("id, nombre, estado").eq("empresa_id", empresaId).eq("estado", "activo").limit(5),
@@ -55,6 +61,7 @@ export function useDashboardData(empresaId: string | null | undefined) {
         supabase.from("documentos_empresa").select("id, fecha_vencimiento").eq("empresa_id", empresaId).not("fecha_vencimiento", "is", null),
         supabase.from("documentos_trabajador").select("id, fecha_vencimiento").eq("empresa_id", empresaId).not("fecha_vencimiento", "is", null),
         supabase.from("items_plan_mejora").select("id, estado").eq("empresa_id", empresaId),
+        supabase.rpc("get_cumplimiento_phva", { p_empresa_id: empresaId }),
       ]);
 
       const totalTrabajadores = trabajadores?.length ?? 0;
@@ -70,12 +77,15 @@ export function useDashboardData(empresaId: string | null | undefined) {
       const planTotal = planItems?.length ?? 0;
       const planCompletados = planItems?.filter(i => i.estado === "completado").length ?? 0;
 
-      let nivel = 0;
-      if (totalTrabajadores > 0) nivel += 25;
-      if (accidentesAnio === 0 && totalTrabajadores > 0) nivel += 20;
-      if (capacitacionesCompletadas > 0) nivel += 20;
-      if (todosDocs.length > 0 && docsVencidos === 0) nivel += 20;
-      if (planTotal > 0) nivel += 15;
+      const cumplimientoData = cumplPhva as unknown as CumplimientoPhva | null;
+      let nivel = cumplimientoData?.porcentaje ?? 0;
+      if (!cumplimientoData) {
+        if (totalTrabajadores > 0) nivel += 25;
+        if (accidentesAnio === 0 && totalTrabajadores > 0) nivel += 20;
+        if (capacitacionesCompletadas > 0) nivel += 20;
+        if (todosDocs.length > 0 && docsVencidos === 0) nivel += 20;
+        if (planTotal > 0) nivel += 15;
+      }
 
       setData({
         totalTrabajadores, trabajadoresAprobados, trabajadoresPendientes,
@@ -86,6 +96,7 @@ export function useDashboardData(empresaId: string | null | undefined) {
         docsProximosVencer, docsVencidos,
         nivelProteccion: nivel,
         itemsPlanMejora: { total: planTotal, completados: planCompletados },
+        cumplimientoPhva: cumplimientoData,
       });
       setLoading(false);
     };
