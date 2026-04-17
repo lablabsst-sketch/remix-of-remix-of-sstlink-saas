@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
 import { EstadoChip } from "@/components/trabajadores/EstadoChip";
+import { VerificadoToggle } from "@/components/trabajadores/VerificadoToggle";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,8 @@ interface Trabajador {
   email: string | null;
   estado: string;
   fecha_ingreso: string;
+  verificado_ingreso?: boolean;
+  verificado_en?: string | null;
   _highlight?: boolean;
 }
 
@@ -49,9 +52,9 @@ export default function Trabajadores() {
   const fetchWorkers = useCallback(async () => {
     if (!empresa?.id) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("trabajadores")
-      .select("id, nombres, apellidos, tipo_documento, numero_documento, cargo, email, estado, fecha_ingreso")
+      .select("id, nombres, apellidos, tipo_documento, numero_documento, cargo, email, estado, fecha_ingreso, verificado_ingreso, verificado_en")
       .eq("empresa_id", empresa.id)
       .order("created_at", { ascending: false });
 
@@ -82,6 +85,10 @@ export default function Trabajadores() {
 
   const handleEstadoUpdate = (id: string, newEstado: string) => {
     setWorkers(prev => prev.map(w => w.id === id ? { ...w, estado: newEstado } : w));
+  };
+
+  const handleVerificadoUpdate = (id: string, verificado: boolean, verificadoEn: string | null) => {
+    setWorkers(prev => prev.map(w => w.id === id ? { ...w, verificado_ingreso: verificado, verificado_en: verificadoEn } : w));
   };
 
   const filtered = workers.filter((w) => {
@@ -187,6 +194,7 @@ export default function Trabajadores() {
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Cargo</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Fecha Ingreso</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Estado</th>
+                    <th className="text-center px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Verificado</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground uppercase tracking-wide text-[10px]">Acciones</th>
                   </tr>
                 </thead>
@@ -217,6 +225,14 @@ export default function Trabajadores() {
                       <td className="px-4 py-3 text-foreground">{formatDate(w.fecha_ingreso)}</td>
                       <td className="px-4 py-3">
                         <EstadoChip workerId={w.id} estado={w.estado} editable={true} onUpdate={handleEstadoUpdate} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <VerificadoToggle
+                          workerId={w.id}
+                          verificado={!!w.verificado_ingreso}
+                          verificadoEn={w.verificado_en}
+                          onUpdate={handleVerificadoUpdate}
+                        />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link
