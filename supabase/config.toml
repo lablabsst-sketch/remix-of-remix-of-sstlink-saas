@@ -1,1 +1,4 @@
 project_id = "gkjuxikbhrxvglplffhf"
+
+[functions.consulta-trabajador]
+verify_jwt = false
