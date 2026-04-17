@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Users, Truck, GraduationCap,
   ClipboardCheck, BarChart3, FileText, CalendarRange,
-  Building2, MessageCircle, UserCheck, ShieldCheck
+  Building2, MessageCircle, UserCheck, ShieldCheck,
+  AlertTriangle, CalendarOff, Stethoscope
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -15,6 +16,9 @@ const mainItems = [
   { title: "Trabajadores", url: "/trabajadores", icon: Users },
   { title: "Clientes", url: "/clientes", icon: UserCheck },
   { title: "Proveedores", url: "/proveedores", icon: Truck, badge: true },
+  { title: "Accidentalidad", url: "/accidentalidad", icon: AlertTriangle },
+  { title: "Ausentismo", url: "/ausentismo", icon: CalendarOff },
+  { title: "Exámenes Médicos", url: "/examenes-medicos", icon: Stethoscope },
   { title: "Capacitaciones", url: "/capacitaciones", icon: GraduationCap },
   { title: "Inspecciones", url: "/inspecciones", icon: ClipboardCheck },
   { title: "Estadísticas", url: "/estadisticas", icon: BarChart3 },

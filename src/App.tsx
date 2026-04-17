@@ -15,6 +15,9 @@ import TrabajadorDetail from "./pages/TrabajadorDetail.tsx";
 import Clientes from "./pages/Clientes.tsx";
 import Portal from "./pages/Portal.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Accidentalidad from "./pages/Accidentalidad.tsx";
+import Ausentismo from "./pages/Ausentismo.tsx";
+import ExamenesMedicos from "./pages/ExamenesMedicos.tsx";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +74,30 @@ const App = () => (
               }
             />
             <Route path="/portal" element={<Portal />} />
+            <Route
+              path="/accidentalidad"
+              element={
+                <ProtectedRoute>
+                  <Accidentalidad />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ausentismo"
+              element={
+                <ProtectedRoute>
+                  <Ausentismo />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/examenes-medicos"
+              element={
+                <ProtectedRoute>
+                  <ExamenesMedicos />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
