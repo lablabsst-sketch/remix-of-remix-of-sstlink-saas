@@ -19,6 +19,7 @@ import Accidentalidad from "./pages/Accidentalidad.tsx";
 import Ausentismo from "./pages/Ausentismo.tsx";
 import ExamenesMedicos from "./pages/ExamenesMedicos.tsx";
 import Capacitaciones from "./pages/Capacitaciones.tsx";
+import FirmaCapacitacion from "./pages/FirmaCapacitacion.tsx";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/firma" element={<FirmaCapacitacion />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
