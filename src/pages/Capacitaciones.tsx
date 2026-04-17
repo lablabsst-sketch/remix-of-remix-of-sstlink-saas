@@ -225,12 +225,13 @@ export default function Capacitaciones() {
         .from("trabajadores")
         .select("id, nombres, apellidos, cargo, telefono, numero_documento")
         .eq("empresa_id", empresa.id)
-        .eq("estado", "activo"),
+        .neq("estado", "inactivo")
+        .or("eliminado.is.null,eliminado.eq.false"),
       (supabase as any)
         .from("empleados_contratista")
         .select("id, nombres, apellidos, cargo, numero_documento, contratista_id")
         .eq("empresa_id", empresa.id)
-        .eq("estado", "activo"),
+        .neq("estado", "inactivo"),
     ]);
 
     setCaps(cs ?? []);
