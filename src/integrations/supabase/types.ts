@@ -1278,6 +1278,9 @@ export type Database = {
           tipo_documento: string
           tipo_trabajador: string | null
           updated_at: string
+          verificado_en: string | null
+          verificado_ingreso: boolean
+          verificado_por: string | null
         }
         Insert: {
           apellidos: string
@@ -1316,6 +1319,9 @@ export type Database = {
           tipo_documento?: string
           tipo_trabajador?: string | null
           updated_at?: string
+          verificado_en?: string | null
+          verificado_ingreso?: boolean
+          verificado_por?: string | null
         }
         Update: {
           apellidos?: string
@@ -1354,6 +1360,9 @@ export type Database = {
           tipo_documento?: string
           tipo_trabajador?: string | null
           updated_at?: string
+          verificado_en?: string | null
+          verificado_ingreso?: boolean
+          verificado_por?: string | null
         }
         Relationships: [
           {
