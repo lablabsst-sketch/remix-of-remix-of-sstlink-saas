@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
 import { EstadoChip } from "@/components/trabajadores/EstadoChip";
+import { VerificadoToggle } from "@/components/trabajadores/VerificadoToggle";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,8 @@ interface Trabajador {
   email: string | null;
   estado: string;
   fecha_ingreso: string;
+  verificado_ingreso?: boolean;
+  verificado_en?: string | null;
   _highlight?: boolean;
 }
 
