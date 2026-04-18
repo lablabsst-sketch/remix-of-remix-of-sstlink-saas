@@ -1497,6 +1497,39 @@ export type Database = {
           },
         ]
       }
+      verificacion_audit: {
+        Row: {
+          cambiado_en: string
+          cambiado_por: string | null
+          cambiado_por_nombre: string | null
+          empresa_id: string
+          id: string
+          trabajador_id: string
+          valor_anterior: boolean | null
+          valor_nuevo: boolean
+        }
+        Insert: {
+          cambiado_en?: string
+          cambiado_por?: string | null
+          cambiado_por_nombre?: string | null
+          empresa_id: string
+          id?: string
+          trabajador_id: string
+          valor_anterior?: boolean | null
+          valor_nuevo: boolean
+        }
+        Update: {
+          cambiado_en?: string
+          cambiado_por?: string | null
+          cambiado_por_nombre?: string | null
+          empresa_id?: string
+          id?: string
+          trabajador_id?: string
+          valor_anterior?: boolean | null
+          valor_nuevo?: boolean
+        }
+        Relationships: []
+      }
       whatsapp_log: {
         Row: {
           created_at: string
