@@ -3,14 +3,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel,
+  SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -26,8 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   CalendarRange, Plus, Pencil, Trash2, ChevronLeft, ChevronRight,
-  Printer, CheckCircle2, Clock, AlertCircle, TrendingUp, DollarSign,
-  ListTodo, CheckSquare,
+  Printer, CheckCircle2, TrendingUp, DollarSign, ListTodo, CheckSquare,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -70,6 +70,23 @@ interface Tarea {
   estado: string;
 }
 
+interface Estandar {
+  id: string;
+  codigo: string;
+  nombre: string;
+  fase: string;
+  grupo: string;
+  orden: number;
+}
+
+interface Usuario {
+  id: string;
+  nombre_completo: string;
+  rol: string;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const MESES_LABELS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 const CATEGORIAS = [
@@ -84,6 +101,8 @@ const CATEGORIAS = [
   "Auditoría y Mejora Continua",
 ];
 
+const RECURSOS_OPTS = ["Financieros", "Recurso Humano", "Técnicos", "Tecnológico"];
+
 const PRIORIDAD_COLOR: Record<string, string> = {
   alta:  "bg-red-100 text-red-700",
   media: "bg-yellow-100 text-yellow-700",
@@ -91,23 +110,22 @@ const PRIORIDAD_COLOR: Record<string, string> = {
 };
 
 const ESTADO_COLOR: Record<string, string> = {
-  pendiente:   "bg-gray-100 text-gray-600",
+  pendiente:    "bg-gray-100 text-gray-600",
   "en-proceso": "bg-blue-100 text-blue-700",
-  completado:  "bg-green-100 text-green-700",
-  cancelado:   "bg-red-100 text-red-700",
+  completado:   "bg-green-100 text-green-700",
+  cancelado:    "bg-red-100 text-red-700",
 };
 
-// ─── Blank forms ──────────────────────────────────────────────────────────────
+// ─── Blank form ───────────────────────────────────────────────────────────────
 
-const blankActividad = (): Omit<Actividad, "id" | "plan_id" | "empresa_id"> => ({
+const blankActividad = () => ({
   categoria: "General",
   actividad: "",
-  objetivo: "",
   responsable: "",
   recursos: "",
-  presupuesto: null,
-  indicador: "",
-  meses: [],
+  presupuesto: null as number | null,
+  indicador: "",   // stores estandar codigo
+  meses: [] as number[],
   estado: "pendiente",
   porcentaje_avance: 0,
   observaciones: "",
@@ -124,6 +142,8 @@ export default function PlanAnualPage() {
   const [plan, setPlan] = useState<PlanAnual | null>(null);
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
+  const [estandares, setEstandares] = useState<Estandar[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dialogs
@@ -135,13 +155,29 @@ export default function PlanAnualPage() {
   const [planDialog, setPlanDialog] = useState(false);
   const [formPlan, setFormPlan] = useState({ titulo: "", objetivo: "", aprobado_por: "" });
 
-  // ── Fetch ────────────────────────────────────────────────────────────────
+  // ── Fetch static data (estandares + usuarios) ─────────────────────────────
+
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: estData }, { data: usrData }] = await Promise.all([
+        supabase.from("phva_estandares").select("id,codigo,nombre,fase,grupo,orden").order("orden"),
+        (supabase as any).from("usuarios")
+          .select("id,nombre_completo,rol")
+          .eq("empresa_id", empresa?.id)
+          .in("rol", ["administrador", "asistente"]),
+      ]);
+      setEstandares(estData ?? []);
+      setUsuarios(usrData ?? []);
+    };
+    if (empresa?.id) load();
+  }, [empresa?.id]);
+
+  // ── Fetch plan + actividades + tareas ─────────────────────────────────────
 
   const fetchPlan = useCallback(async () => {
     if (!empresa?.id) return;
     setLoading(true);
     try {
-      // Get or create plan for this year
       const { data: planData } = await (supabase as any)
         .from("plan_anual")
         .select("*")
@@ -163,15 +199,12 @@ export default function PlanAnualPage() {
         setActividades([]);
       }
 
-      // Tareas del año
-      const from = `${anio}-01-01`;
-      const to = `${anio}-12-31`;
       const { data: tareasData } = await (supabase as any)
         .from("tareas")
         .select("*")
         .eq("empresa_id", empresa.id)
-        .gte("fecha", from)
-        .lte("fecha", to)
+        .gte("fecha", `${anio}-01-01`)
+        .lte("fecha", `${anio}-12-31`)
         .order("fecha");
       setTareas(tareasData ?? []);
     } finally {
@@ -181,7 +214,14 @@ export default function PlanAnualPage() {
 
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
 
-  // ── Create plan ──────────────────────────────────────────────────────────
+  // ── Estandares grouped by fase ────────────────────────────────────────────
+
+  const estandaresPorFase = estandares.reduce<Record<string, Estandar[]>>((acc, e) => {
+    (acc[e.fase] = acc[e.fase] ?? []).push(e);
+    return acc;
+  }, {});
+
+  // ── Crear plan ────────────────────────────────────────────────────────────
 
   const crearPlan = async () => {
     if (!empresa?.id) return;
@@ -210,7 +250,7 @@ export default function PlanAnualPage() {
     }
   };
 
-  // ── Save actividad ───────────────────────────────────────────────────────
+  // ── Open dialogs ──────────────────────────────────────────────────────────
 
   const openNew = () => {
     setEditingActividad(null);
@@ -223,7 +263,6 @@ export default function PlanAnualPage() {
     setFormActividad({
       categoria: a.categoria,
       actividad: a.actividad,
-      objetivo: a.objetivo ?? "",
       responsable: a.responsable ?? "",
       recursos: a.recursos ?? "",
       presupuesto: a.presupuesto,
@@ -236,17 +275,31 @@ export default function PlanAnualPage() {
     setActividadDialog(true);
   };
 
+  // Al seleccionar un estándar del indicador → auto-rellena "actividad"
+  const onIndicadorChange = (codigo: string) => {
+    const est = estandares.find(e => e.codigo === codigo);
+    setFormActividad(p => ({
+      ...p,
+      indicador: codigo,
+      actividad: est ? est.nombre : p.actividad,
+    }));
+  };
+
   const toggleMes = (m: number) => {
     setFormActividad(prev => ({
       ...prev,
-      meses: prev.meses.includes(m) ? prev.meses.filter(x => x !== m) : [...prev.meses, m].sort((a,b)=>a-b),
+      meses: prev.meses.includes(m)
+        ? prev.meses.filter(x => x !== m)
+        : [...prev.meses, m].sort((a, b) => a - b),
     }));
   };
+
+  // ── Save actividad ────────────────────────────────────────────────────────
 
   const saveActividad = async () => {
     if (!plan || !empresa?.id) return;
     if (!formActividad.actividad.trim()) {
-      toast({ title: "Escribe el nombre de la actividad", variant: "destructive" });
+      toast({ title: "Escribe o selecciona una actividad", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -256,7 +309,7 @@ export default function PlanAnualPage() {
         empresa_id: empresa.id,
         categoria: formActividad.categoria,
         actividad: formActividad.actividad,
-        objetivo: formActividad.objetivo || null,
+        objetivo: null,
         responsable: formActividad.responsable || null,
         recursos: formActividad.recursos || null,
         presupuesto: formActividad.presupuesto,
@@ -288,7 +341,7 @@ export default function PlanAnualPage() {
     }
   };
 
-  // ── Delete actividad ─────────────────────────────────────────────────────
+  // ── Delete actividad ──────────────────────────────────────────────────────
 
   const deleteActividad = async () => {
     if (!deleteTarget) return;
@@ -305,7 +358,7 @@ export default function PlanAnualPage() {
     }
   };
 
-  // ── KPIs ─────────────────────────────────────────────────────────────────
+  // ── KPIs ──────────────────────────────────────────────────────────────────
 
   const totalActs = actividades.length;
   const completadas = actividades.filter(a => a.estado === "completado").length;
@@ -314,18 +367,12 @@ export default function PlanAnualPage() {
     : 0;
   const totalPresupuesto = actividades.reduce((s, a) => s + (a.presupuesto ?? 0), 0);
 
-  // ── Agrupar por categoría ─────────────────────────────────────────────────
-
   const porCategoria = actividades.reduce<Record<string, Actividad[]>>((acc, a) => {
     (acc[a.categoria] = acc[a.categoria] ?? []).push(a);
     return acc;
   }, {});
 
-  // ── PDF ───────────────────────────────────────────────────────────────────
-
-  const imprimir = () => window.print();
-
-  // ─── Render ──────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <AppLayout breadcrumbs={["Plan Anual"]}>
@@ -336,25 +383,16 @@ export default function PlanAnualPage() {
           {plan && <p className="text-sm text-muted-foreground mt-0.5">{plan.titulo}</p>}
         </div>
         <div className="flex items-center gap-2">
-          {/* Year selector */}
           <div className="flex items-center border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setAnio(a => a - 1)}
-              className="px-2 py-1.5 hover:bg-muted transition-colors"
-            >
+            <button onClick={() => setAnio(a => a - 1)} className="px-2 py-1.5 hover:bg-muted transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-3 py-1.5 text-sm font-medium border-x min-w-[60px] text-center">
-              {anio}
-            </span>
-            <button
-              onClick={() => setAnio(a => a + 1)}
-              className="px-2 py-1.5 hover:bg-muted transition-colors"
-            >
+            <span className="px-3 py-1.5 text-sm font-medium border-x min-w-[60px] text-center">{anio}</span>
+            <button onClick={() => setAnio(a => a + 1)} className="px-2 py-1.5 hover:bg-muted transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <Button variant="outline" size="sm" onClick={imprimir}>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="w-4 h-4 mr-1.5" /> Imprimir
           </Button>
           {plan && (
@@ -370,7 +408,6 @@ export default function PlanAnualPage() {
           {[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
         </div>
       ) : !plan ? (
-        /* No plan yet */
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <CalendarRange className="w-12 h-12 text-muted-foreground/40" />
           <p className="text-muted-foreground">No hay plan anual para {anio}</p>
@@ -388,90 +425,54 @@ export default function PlanAnualPage() {
             <TabsTrigger value="tareas">Tareas ejecutadas</TabsTrigger>
           </TabsList>
 
-          {/* ── ACTIVIDADES TAB ── */}
+          {/* ── ACTIVIDADES ── */}
           <TabsContent value="actividades">
-            {/* KPI cards */}
+            {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <Card className="border-none shadow-sm bg-surface">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <ListTodo className="w-4 h-4 text-blue-600" />
+              {[
+                { label: "Actividades", value: totalActs, icon: ListTodo, color: "bg-blue-100 text-blue-600" },
+                { label: "Completadas", value: completadas, icon: CheckCircle2, color: "bg-green-100 text-green-600" },
+                { label: "Avance promedio", value: `${pctAvance}%`, icon: TrendingUp, color: "bg-indigo-100 text-indigo-600" },
+                {
+                  label: "Presupuesto",
+                  value: totalPresupuesto.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }),
+                  icon: DollarSign,
+                  color: "bg-yellow-100 text-yellow-600",
+                },
+              ].map(({ label, value, icon: Icon, color }) => (
+                <Card key={label} className="border-none shadow-sm bg-surface">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">{label}</p>
+                        <p className="text-xl font-bold">{value}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[11px] text-muted-foreground">Actividades</p>
-                      <p className="text-xl font-bold">{totalActs}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-none shadow-sm bg-surface">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-muted-foreground">Completadas</p>
-                      <p className="text-xl font-bold">{completadas}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-none shadow-sm bg-surface">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-muted-foreground">Avance promedio</p>
-                      <p className="text-xl font-bold">{pctAvance}%</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-none shadow-sm bg-surface">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center">
-                      <DollarSign className="w-4 h-4 text-yellow-600" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-muted-foreground">Presupuesto</p>
-                      <p className="text-xl font-bold">
-                        {totalPresupuesto.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             {/* Progress bar */}
             {totalActs > 0 && (
               <div className="mb-6">
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Avance general del plan</span>
-                  <span>{pctAvance}%</span>
+                  <span>Avance general del plan</span><span>{pctAvance}%</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 rounded-full transition-all"
-                    style={{ width: `${pctAvance}%` }}
-                  />
+                  <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${pctAvance}%` }} />
                 </div>
               </div>
             )}
 
-            {/* Activities empty */}
             {totalActs === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <CalendarRange className="w-10 h-10 text-muted-foreground/30" />
                 <p className="text-muted-foreground text-sm">Sin actividades. Crea la primera.</p>
-                <Button size="sm" onClick={openNew}>
-                  <Plus className="w-4 h-4 mr-1.5" /> Nueva Actividad
-                </Button>
+                <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1.5" /> Nueva Actividad</Button>
               </div>
             ) : (
               <div className="space-y-6">
@@ -482,8 +483,9 @@ export default function PlanAnualPage() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/30">
-                            <TableHead className="min-w-[200px]">Actividad</TableHead>
+                            <TableHead className="min-w-[220px]">Actividad</TableHead>
                             <TableHead className="min-w-[120px]">Responsable</TableHead>
+                            <TableHead className="min-w-[100px]">Recursos</TableHead>
                             <TableHead className="min-w-[260px]">Meses</TableHead>
                             <TableHead className="text-right">Presupuesto</TableHead>
                             <TableHead>Estado</TableHead>
@@ -496,24 +498,22 @@ export default function PlanAnualPage() {
                             <TableRow key={a.id}>
                               <TableCell>
                                 <div>
+                                  {a.indicador && (
+                                    <span className="inline-block text-[10px] font-mono bg-indigo-50 text-indigo-600 border border-indigo-200 rounded px-1 mb-0.5">
+                                      {a.indicador}
+                                    </span>
+                                  )}
                                   <p className="font-medium text-sm">{a.actividad}</p>
-                                  {a.objetivo && <p className="text-xs text-muted-foreground line-clamp-1">{a.objetivo}</p>}
                                 </div>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{a.responsable || "—"}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{a.recursos || "—"}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-0.5">
                                   {MESES_LABELS.map((m, i) => (
-                                    <span
-                                      key={i}
-                                      className={`text-[10px] px-1 py-0.5 rounded font-medium ${
-                                        a.meses.includes(i + 1)
-                                          ? "bg-indigo-100 text-indigo-700"
-                                          : "bg-muted text-muted-foreground"
-                                      }`}
-                                    >
-                                      {m}
-                                    </span>
+                                    <span key={i} className={`text-[10px] px-1 py-0.5 rounded font-medium ${
+                                      a.meses.includes(i + 1) ? "bg-indigo-100 text-indigo-700" : "bg-muted text-muted-foreground"
+                                    }`}>{m}</span>
                                   ))}
                                 </div>
                               </TableCell>
@@ -530,10 +530,7 @@ export default function PlanAnualPage() {
                               <TableCell>
                                 <div className="flex items-center gap-1.5">
                                   <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-indigo-500 rounded-full"
-                                      style={{ width: `${a.porcentaje_avance}%` }}
-                                    />
+                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${a.porcentaje_avance}%` }} />
                                   </div>
                                   <span className="text-xs text-muted-foreground">{a.porcentaje_avance}%</span>
                                 </div>
@@ -559,7 +556,7 @@ export default function PlanAnualPage() {
             )}
           </TabsContent>
 
-          {/* ── TAREAS TAB ── */}
+          {/* ── TAREAS ── */}
           <TabsContent value="tareas">
             {tareas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -593,14 +590,10 @@ export default function PlanAnualPage() {
                           {t.fecha_fin && ` → ${new Date(t.fecha_fin + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}`}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-[10px] ${PRIORIDAD_COLOR[t.prioridad] ?? ""}`}>
-                            {t.prioridad}
-                          </Badge>
+                          <Badge variant="outline" className={`text-[10px] ${PRIORIDAD_COLOR[t.prioridad] ?? ""}`}>{t.prioridad}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-[10px] ${ESTADO_COLOR[t.estado] ?? ""}`}>
-                            {t.estado}
-                          </Badge>
+                          <Badge variant="outline" className={`text-[10px] ${ESTADO_COLOR[t.estado] ?? ""}`}>{t.estado}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -612,12 +605,10 @@ export default function PlanAnualPage() {
         </Tabs>
       )}
 
-      {/* ── Create Plan Dialog ── */}
+      {/* ── Crear Plan Dialog ── */}
       <Dialog open={planDialog} onOpenChange={setPlanDialog}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Crear Plan Anual {anio}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Crear Plan Anual {anio}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>Título del plan</Label>
@@ -646,12 +637,8 @@ export default function PlanAnualPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button onClick={crearPlan} disabled={saving}>
-              {saving ? "Creando..." : "Crear Plan"}
-            </Button>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={crearPlan} disabled={saving}>{saving ? "Creando..." : "Crear Plan"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -663,6 +650,8 @@ export default function PlanAnualPage() {
             <DialogTitle>{editingActividad ? "Editar Actividad" : "Nueva Actividad"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+
+            {/* Categoría + Estado */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Categoría</Label>
@@ -687,6 +676,31 @@ export default function PlanAnualPage() {
               </div>
             </div>
 
+            {/* Indicador SG-SST → auto-rellena Actividad */}
+            <div className="space-y-1.5">
+              <Label>Indicador SG-SST</Label>
+              <Select value={formActividad.indicador || ""} onValueChange={onIndicadorChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un estándar..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {Object.entries(estandaresPorFase).map(([fase, ests]) => (
+                    <SelectGroup key={fase}>
+                      <SelectLabel className="text-xs font-bold text-muted-foreground">{fase}</SelectLabel>
+                      {ests.map(e => (
+                        <SelectItem key={e.id} value={e.codigo}>
+                          <span className="font-mono text-[11px] text-indigo-600 mr-2">{e.codigo}</span>
+                          <span className="text-sm">{e.nombre}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Al seleccionar un estándar se rellena la actividad automáticamente.</p>
+            </div>
+
+            {/* Actividad (editable, auto-filled from indicador) */}
             <div className="space-y-1.5">
               <Label>Actividad *</Label>
               <Input
@@ -696,56 +710,51 @@ export default function PlanAnualPage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Objetivo</Label>
-              <Textarea
-                value={formActividad.objetivo ?? ""}
-                onChange={e => setFormActividad(p => ({ ...p, objetivo: e.target.value }))}
-                rows={2}
-                placeholder="Objetivo específico..."
-              />
-            </div>
-
+            {/* Responsable + Recursos */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Responsable</Label>
-                <Input
-                  value={formActividad.responsable ?? ""}
-                  onChange={e => setFormActividad(p => ({ ...p, responsable: e.target.value }))}
-                  placeholder="Nombre del responsable"
-                />
+                <Select value={formActividad.responsable || ""} onValueChange={v => setFormActividad(p => ({ ...p, responsable: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.length === 0 ? (
+                      <SelectItem value="__none" disabled>Sin usuarios admin/asistente</SelectItem>
+                    ) : (
+                      usuarios.map(u => (
+                        <SelectItem key={u.id} value={u.nombre_completo}>
+                          {u.nombre_completo}
+                          <span className="ml-2 text-[10px] text-muted-foreground">{u.rol}</span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Indicador</Label>
-                <Input
-                  value={formActividad.indicador ?? ""}
-                  onChange={e => setFormActividad(p => ({ ...p, indicador: e.target.value }))}
-                  placeholder="Indicador de cumplimiento"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Recursos</Label>
-                <Input
-                  value={formActividad.recursos ?? ""}
-                  onChange={e => setFormActividad(p => ({ ...p, recursos: e.target.value }))}
-                  placeholder="Recursos necesarios"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Presupuesto (COP)</Label>
-                <Input
-                  type="number"
-                  value={formActividad.presupuesto ?? ""}
-                  onChange={e => setFormActividad(p => ({ ...p, presupuesto: e.target.value ? Number(e.target.value) : null }))}
-                  placeholder="0"
-                />
+                <Select value={formActividad.recursos || ""} onValueChange={v => setFormActividad(p => ({ ...p, recursos: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Tipo de recurso..." /></SelectTrigger>
+                  <SelectContent>
+                    {RECURSOS_OPTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            {/* Month selector */}
+            {/* Presupuesto */}
+            <div className="space-y-1.5">
+              <Label>Presupuesto (COP)</Label>
+              <Input
+                type="number"
+                value={formActividad.presupuesto ?? ""}
+                onChange={e => setFormActividad(p => ({ ...p, presupuesto: e.target.value ? Number(e.target.value) : null }))}
+                placeholder="0"
+              />
+            </div>
+
+            {/* Meses */}
             <div className="space-y-2">
               <Label>Meses de ejecución</Label>
               <div className="flex flex-wrap gap-1.5">
@@ -770,20 +779,19 @@ export default function PlanAnualPage() {
               </div>
             </div>
 
-            {/* Progress */}
+            {/* Avance */}
             <div className="space-y-1.5">
               <Label>Porcentaje de avance: {formActividad.porcentaje_avance}%</Label>
               <input
                 type="range"
-                min={0}
-                max={100}
-                step={5}
+                min={0} max={100} step={5}
                 value={formActividad.porcentaje_avance}
                 onChange={e => setFormActividad(p => ({ ...p, porcentaje_avance: Number(e.target.value) }))}
                 className="w-full accent-indigo-600"
               />
             </div>
 
+            {/* Observaciones */}
             <div className="space-y-1.5">
               <Label>Observaciones</Label>
               <Textarea
@@ -795,9 +803,7 @@ export default function PlanAnualPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
             <Button onClick={saveActividad} disabled={saving}>
               {saving ? "Guardando..." : editingActividad ? "Actualizar" : "Crear"}
             </Button>
