@@ -1,1 +1,7 @@
 project_id = "waurqxbvxezdvmdcmgjt"
+
+[functions.sync-push]
+verify_jwt = false
+
+[functions.sync-receive]
+verify_jwt = false
