@@ -328,7 +328,7 @@ export default function PlanAnualPage() {
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Plan Anual", icon: CalendarRange }]}>
+    <AppLayout breadcrumbs={["Plan Anual"]}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6 print:hidden">
         <div>
