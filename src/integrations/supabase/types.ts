@@ -1240,6 +1240,27 @@ export type Database = {
           },
         ]
       }
+      sync_config: {
+        Row: {
+          enabled: boolean
+          endpoint_url: string
+          id: number
+          shared_secret: string
+        }
+        Insert: {
+          enabled?: boolean
+          endpoint_url: string
+          id?: number
+          shared_secret: string
+        }
+        Update: {
+          enabled?: boolean
+          endpoint_url?: string
+          id?: number
+          shared_secret?: string
+        }
+        Relationships: []
+      }
       sync_log: {
         Row: {
           created_at: string
