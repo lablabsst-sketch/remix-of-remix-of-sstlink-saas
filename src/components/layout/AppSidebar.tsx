@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, Truck, GraduationCap,
   ClipboardCheck, BarChart3, FileText, CalendarRange,
   Building2, MessageCircle, UserCheck, ShieldCheck,
-  AlertTriangle, CalendarOff, Stethoscope
+  AlertTriangle, CalendarOff, Stethoscope, CalendarDays
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -20,6 +20,7 @@ const mainItems = [
   { title: "Ausentismo", url: "/ausentismo", icon: CalendarOff },
   { title: "Exámenes Médicos", url: "/examenes-medicos", icon: Stethoscope },
   { title: "Capacitaciones", url: "/capacitaciones", icon: GraduationCap },
+  { title: "Calendario", url: "/calendario", icon: CalendarDays },
   { title: "Inspecciones", url: "/inspecciones", icon: ClipboardCheck },
   { title: "Estadísticas", url: "/estadisticas", icon: BarChart3 },
   { title: "Documentos", url: "/documentos", icon: FileText },

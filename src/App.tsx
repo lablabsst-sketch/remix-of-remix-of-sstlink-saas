@@ -20,6 +20,8 @@ import Ausentismo from "./pages/Ausentismo.tsx";
 import ExamenesMedicos from "./pages/ExamenesMedicos.tsx";
 import Capacitaciones from "./pages/Capacitaciones.tsx";
 import FirmaCapacitacion from "./pages/FirmaCapacitacion.tsx";
+import Calendario from "./pages/Calendario.tsx";
+import PlanAnual from "./pages/PlanAnual.tsx";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +111,22 @@ const App = () => (
               }
             />
             <Route path="/firma" element={<FirmaCapacitacion />} />
+            <Route
+              path="/calendario"
+              element={
+                <ProtectedRoute>
+                  <Calendario />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/plan-anual"
+              element={
+                <ProtectedRoute>
+                  <PlanAnual />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
