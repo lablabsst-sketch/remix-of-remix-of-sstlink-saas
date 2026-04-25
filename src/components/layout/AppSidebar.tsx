@@ -41,15 +41,17 @@ export function AppSidebar() {
           <NavLink
             to={item.url}
             className={cn(
-              "w-10 h-10 flex items-center justify-center rounded-lg transition-colors relative",
+              "group w-10 h-10 flex items-center justify-center rounded-lg relative",
+              "transition-all duration-200 ease-out",
+              "hover:scale-125 hover:-translate-y-0.5 active:scale-110",
               isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-hint hover:bg-background"
+                ? "bg-accent text-accent-foreground shadow-sm"
+                : "text-hint hover:bg-background hover:text-foreground"
             )}
             aria-label={item.title}
           >
             <item.icon
-              className="w-[18px] h-[18px]"
+              className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110"
               style={item.color ? { color: item.color } : undefined}
               aria-hidden="true"
             />
