@@ -1,0 +1,477 @@
+import { useEffect, useState, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Building2, Pencil, Save, X, Upload, Users, ShieldCheck,
+  Phone, Mail, MapPin, Hash, Briefcase, AlertTriangle, UserCheck,
+} from "lucide-react";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface EmpresaFull {
+  id: string;
+  nombre: string;
+  nit: string | null;
+  direccion: string | null;
+  ciudad: string | null;
+  departamento: string | null;
+  telefono: string | null;
+  email: string | null;
+  sector_industria: string | null;
+  actividad_economica: string | null;
+  clase_riesgo: string | null;
+  arl: string | null;
+  representante_legal: string | null;
+  responsable_sgsst: string | null;
+  num_empleados_directos: number | null;
+  num_empleados_indirectos: number | null;
+  tiene_contratistas: boolean | null;
+  logo_url: string | null;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CLASES_RIESGO = ["I", "II", "III", "IV", "V"];
+
+const ARLS = [
+  "Positiva ARL",
+  "Sura ARL",
+  "Colmena Seguros",
+  "Axa Colpatria ARL",
+  "Bolívar ARL",
+  "La Equidad ARL",
+  "Mapfre ARL",
+  "Liberty ARL",
+  "Otra",
+];
+
+const DEPARTAMENTOS = [
+  "Amazonas","Antioquia","Arauca","Atlántico","Bolívar","Boyacá","Caldas",
+  "Caquetá","Casanare","Cauca","Cesar","Chocó","Córdoba","Cundinamarca",
+  "Guainía","Guaviare","Huila","La Guajira","Magdalena","Meta","Nariño",
+  "Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia",
+  "Santander","Sucre","Tolima","Valle del Cauca","Vaupés","Vichada",
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function MiEmpresa() {
+  const { empresa: authEmpresa } = useAuth();
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [empresa, setEmpresa] = useState<EmpresaFull | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Partial<EmpresaFull>>({});
+  const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // Stats
+  const [stats, setStats] = useState({ trabajadores: 0, contratistas: 0, cumplimiento: 0 });
+
+  // ── Fetch empresa ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!authEmpresa?.id) return;
+    setLoading(true);
+    Promise.all([
+      (supabase as any).from("empresas").select("*").eq("id", authEmpresa.id).single(),
+      supabase.from("trabajadores").select("id", { count: "exact" }).eq("empresa_id", authEmpresa.id).eq("eliminado", false),
+      supabase.from("contratistas").select("id", { count: "exact" }).eq("empresa_id", authEmpresa.id).eq("estado", "activo"),
+    ]).then(([{ data: emp }, { count: tw }, { count: ct }]) => {
+      setEmpresa(emp);
+      setStats({
+        trabajadores: tw ?? 0,
+        contratistas: ct ?? 0,
+        cumplimiento: 0,
+      });
+      setLoading(false);
+    });
+  }, [authEmpresa?.id]);
+
+  // ── Edit ─────────────────────────────────────────────────────────────────
+
+  const startEdit = () => {
+    if (!empresa) return;
+    setForm({ ...empresa });
+    setEditing(true);
+  };
+
+  const cancelEdit = () => { setEditing(false); setForm({}); };
+
+  const save = async () => {
+    if (!empresa) return;
+    setSaving(true);
+    const { error } = await (supabase as any)
+      .from("empresas")
+      .update({
+        nombre: form.nombre,
+        nit: form.nit || null,
+        direccion: form.direccion || null,
+        ciudad: form.ciudad || null,
+        departamento: form.departamento || null,
+        telefono: form.telefono || null,
+        email: form.email || null,
+        sector_industria: form.sector_industria || null,
+        actividad_economica: form.actividad_economica || null,
+        clase_riesgo: form.clase_riesgo || null,
+        arl: form.arl || null,
+        representante_legal: form.representante_legal || null,
+        responsable_sgsst: form.responsable_sgsst || null,
+        num_empleados_directos: form.num_empleados_directos ?? null,
+        num_empleados_indirectos: form.num_empleados_indirectos ?? null,
+        tiene_contratistas: form.tiene_contratistas ?? false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", empresa.id);
+    if (error) {
+      toast({ title: "Error al guardar", variant: "destructive" });
+    } else {
+      setEmpresa(prev => prev ? { ...prev, ...form } as EmpresaFull : prev);
+      setEditing(false);
+      toast({ title: "Información actualizada" });
+    }
+    setSaving(false);
+  };
+
+  // ── Logo upload ───────────────────────────────────────────────────────────
+
+  const uploadLogo = async (file: File) => {
+    if (!empresa) return;
+    setUploadingLogo(true);
+    const ext = file.name.split(".").pop();
+    const path = `logos/${empresa.id}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("empresa-assets")
+      .upload(path, file, { upsert: true });
+    if (upErr) {
+      toast({ title: "Error al subir logo", variant: "destructive" });
+      setUploadingLogo(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(path);
+    const logo_url = urlData.publicUrl;
+    await (supabase as any).from("empresas").update({ logo_url }).eq("id", empresa.id);
+    setEmpresa(prev => prev ? { ...prev, logo_url } : prev);
+    toast({ title: "Logo actualizado" });
+    setUploadingLogo(false);
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  if (loading) return (
+    <AppLayout breadcrumbs={["Mi Empresa"]}>
+      <div className="max-w-4xl space-y-4">
+        <Skeleton className="h-32 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    </AppLayout>
+  );
+
+  if (!empresa) return (
+    <AppLayout breadcrumbs={["Mi Empresa"]}>
+      <div className="flex items-center justify-center py-24 text-muted-foreground">Sin datos de empresa.</div>
+    </AppLayout>
+  );
+
+  const f = (field: keyof EmpresaFull) => editing ? (form[field] as string ?? "") : (empresa[field] as string ?? "");
+
+  return (
+    <AppLayout breadcrumbs={["Mi Empresa"]}>
+      <div className="max-w-4xl space-y-4">
+
+        {/* ── Header card ── */}
+        <div className="bg-surface rounded-xl border-[0.5px] border-border p-5">
+          <div className="flex items-start gap-4">
+            {/* Logo */}
+            <div className="relative group shrink-0">
+              <div
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-muted flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                {empresa.logo_url ? (
+                  <img src={empresa.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-muted-foreground/50">
+                    <Building2 className="w-7 h-7" />
+                    <span className="text-[9px]">Logo</span>
+                  </div>
+                )}
+                {uploadingLogo && (
+                  <div className="absolute inset-0 bg-background/70 flex items-center justify-center rounded-xl">
+                    <span className="text-[10px] text-muted-foreground">Subiendo…</span>
+                  </div>
+                )}
+              </div>
+              <div
+                className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer shadow"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="w-2.5 h-2.5" />
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
+              />
+            </div>
+
+            {/* Name + actions */}
+            <div className="flex-1 min-w-0">
+              {editing ? (
+                <Input
+                  value={form.nombre ?? ""}
+                  onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                  className="text-lg font-semibold mb-1 h-9"
+                />
+              ) : (
+                <h1 className="text-xl font-semibold truncate">{empresa.nombre}</h1>
+              )}
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                {empresa.nit && <span className="text-sm text-muted-foreground">NIT: {empresa.nit}</span>}
+                {empresa.clase_riesgo && (
+                  <Badge variant="outline" className="text-[11px]">Clase Riesgo {empresa.clase_riesgo}</Badge>
+                )}
+                {empresa.arl && (
+                  <Badge variant="outline" className="text-[11px] bg-blue-50 text-blue-700 border-blue-200">{empresa.arl}</Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Edit / Save / Cancel */}
+            <div className="flex gap-2 shrink-0">
+              {editing ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={cancelEdit}>
+                    <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                  </Button>
+                  <Button size="sm" onClick={save} disabled={saving}>
+                    <Save className="w-3.5 h-3.5 mr-1" /> {saving ? "Guardando…" : "Guardar"}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={startEdit}>
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t">
+            {[
+              { label: "Trabajadores directos", value: stats.trabajadores, icon: Users, color: "text-blue-600 bg-blue-50" },
+              { label: "Contratistas activos", value: stats.contratistas, icon: UserCheck, color: "text-amber-600 bg-amber-50" },
+              { label: "Empleados directos registrados", value: empresa.num_empleados_directos ?? "—", icon: Briefcase, color: "text-indigo-600 bg-indigo-50" },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">{label}</p>
+                  <p className="text-lg font-bold leading-tight">{value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Info grid ── */}
+        <div className="grid md:grid-cols-2 gap-4">
+
+          {/* Información general */}
+          <Card className="border-[0.5px] border-border shadow-none bg-surface">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[13px] font-medium flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground" /> Información General
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="NIT" icon={Hash} editing={editing}>
+                {editing
+                  ? <Input value={form.nit ?? ""} onChange={e => setForm(p => ({ ...p, nit: e.target.value }))} placeholder="900000000-1" />
+                  : <span>{empresa.nit || "—"}</span>
+                }
+              </Field>
+              <Field label="Sector industria" icon={Briefcase} editing={editing}>
+                {editing
+                  ? <Input value={form.sector_industria ?? ""} onChange={e => setForm(p => ({ ...p, sector_industria: e.target.value }))} placeholder="Sector" />
+                  : <span>{empresa.sector_industria || "—"}</span>
+                }
+              </Field>
+              <Field label="Actividad económica (CIIU)" icon={Briefcase} editing={editing}>
+                {editing
+                  ? <Input value={form.actividad_economica ?? ""} onChange={e => setForm(p => ({ ...p, actividad_economica: e.target.value }))} placeholder="Ej. 4690" />
+                  : <span>{empresa.actividad_economica || "—"}</span>
+                }
+              </Field>
+              <Field label="Teléfono" icon={Phone} editing={editing}>
+                {editing
+                  ? <Input value={form.telefono ?? ""} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))} placeholder="+57 300 000 0000" />
+                  : <span>{empresa.telefono || "—"}</span>
+                }
+              </Field>
+              <Field label="Correo electrónico" icon={Mail} editing={editing}>
+                {editing
+                  ? <Input type="email" value={form.email ?? ""} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="empresa@correo.com" />
+                  : <span>{empresa.email || "—"}</span>
+                }
+              </Field>
+            </CardContent>
+          </Card>
+
+          {/* Ubicación */}
+          <Card className="border-[0.5px] border-border shadow-none bg-surface">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[13px] font-medium flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-muted-foreground" /> Ubicación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="Dirección" icon={MapPin} editing={editing}>
+                {editing
+                  ? <Input value={form.direccion ?? ""} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Calle / Carrera / Avenida…" />
+                  : <span>{empresa.direccion || "—"}</span>
+                }
+              </Field>
+              <Field label="Ciudad" icon={MapPin} editing={editing}>
+                {editing
+                  ? <Input value={form.ciudad ?? ""} onChange={e => setForm(p => ({ ...p, ciudad: e.target.value }))} placeholder="Ciudad" />
+                  : <span>{empresa.ciudad || "—"}</span>
+                }
+              </Field>
+              <Field label="Departamento" icon={MapPin} editing={editing}>
+                {editing ? (
+                  <Select value={form.departamento ?? ""} onValueChange={v => setForm(p => ({ ...p, departamento: v }))}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {DEPARTAMENTOS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : <span>{empresa.departamento || "—"}</span>}
+              </Field>
+            </CardContent>
+          </Card>
+
+          {/* SG-SST */}
+          <Card className="border-[0.5px] border-border shadow-none bg-surface">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[13px] font-medium flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-muted-foreground" /> Perfil SG-SST
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="Clase de riesgo" icon={AlertTriangle} editing={editing}>
+                {editing ? (
+                  <Select value={form.clase_riesgo ?? ""} onValueChange={v => setForm(p => ({ ...p, clase_riesgo: v }))}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Clase…" /></SelectTrigger>
+                    <SelectContent>
+                      {CLASES_RIESGO.map(c => <SelectItem key={c} value={c}>Clase {c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : <span>{empresa.clase_riesgo ? `Clase ${empresa.clase_riesgo}` : "—"}</span>}
+              </Field>
+              <Field label="ARL" icon={ShieldCheck} editing={editing}>
+                {editing ? (
+                  <Select value={form.arl ?? ""} onValueChange={v => setForm(p => ({ ...p, arl: v }))}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="ARL…" /></SelectTrigger>
+                    <SelectContent>
+                      {ARLS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : <span>{empresa.arl || "—"}</span>}
+              </Field>
+              <Field label="Representante legal" icon={UserCheck} editing={editing}>
+                {editing
+                  ? <Input value={form.representante_legal ?? ""} onChange={e => setForm(p => ({ ...p, representante_legal: e.target.value }))} placeholder="Nombre completo" />
+                  : <span>{empresa.representante_legal || "—"}</span>
+                }
+              </Field>
+              <Field label="Responsable SG-SST" icon={UserCheck} editing={editing}>
+                {editing
+                  ? <Input value={form.responsable_sgsst ?? ""} onChange={e => setForm(p => ({ ...p, responsable_sgsst: e.target.value }))} placeholder="Nombre completo" />
+                  : <span>{empresa.responsable_sgsst || "—"}</span>
+                }
+              </Field>
+            </CardContent>
+          </Card>
+
+          {/* Planta */}
+          <Card className="border-[0.5px] border-border shadow-none bg-surface">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[13px] font-medium flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" /> Planta de Personal
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="Empleados directos" icon={Users} editing={editing}>
+                {editing
+                  ? <Input type="number" value={form.num_empleados_directos ?? ""} onChange={e => setForm(p => ({ ...p, num_empleados_directos: e.target.value ? Number(e.target.value) : null }))} placeholder="0" />
+                  : <span>{empresa.num_empleados_directos ?? "—"}</span>
+                }
+              </Field>
+              <Field label="Empleados indirectos" icon={Users} editing={editing}>
+                {editing
+                  ? <Input type="number" value={form.num_empleados_indirectos ?? ""} onChange={e => setForm(p => ({ ...p, num_empleados_indirectos: e.target.value ? Number(e.target.value) : null }))} placeholder="0" />
+                  : <span>{empresa.num_empleados_indirectos ?? "—"}</span>
+                }
+              </Field>
+              <Field label="¿Tiene contratistas?" icon={UserCheck} editing={editing}>
+                {editing ? (
+                  <Select value={form.tiene_contratistas ? "si" : "no"} onValueChange={v => setForm(p => ({ ...p, tiene_contratistas: v === "si" }))}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="si">Sí</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : <span>{empresa.tiene_contratistas ? "Sí" : "No"}</span>}
+              </Field>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
+
+// ─── Field helper ─────────────────────────────────────────────────────────────
+
+function Field({ label, icon: Icon, children, editing }: {
+  label: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+  editing: boolean;
+}) {
+  return (
+    <div className={editing ? "space-y-1" : "flex items-start gap-2.5 py-0.5"}>
+      {editing ? (
+        <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      ) : (
+        <>
+          <Icon className="w-3.5 h-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-[10px] text-muted-foreground leading-none mb-0.5">{label}</p>
+            <p className="text-[13px]">{children}</p>
+          </div>
+        </>
+      )}
+      {editing && children}
+    </div>
+  );
+}
