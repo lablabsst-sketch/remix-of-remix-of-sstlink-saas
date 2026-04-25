@@ -80,6 +80,78 @@ export type Database = {
           },
         ]
       }
+      actividades_plan_anual: {
+        Row: {
+          actividad: string
+          categoria: string
+          created_at: string
+          empresa_id: string
+          estado: string
+          id: string
+          indicador: string | null
+          meses: number[]
+          objetivo: string | null
+          observaciones: string | null
+          plan_id: string
+          porcentaje_avance: number
+          presupuesto: number | null
+          recursos: string | null
+          responsable: string | null
+          updated_at: string
+        }
+        Insert: {
+          actividad: string
+          categoria?: string
+          created_at?: string
+          empresa_id: string
+          estado?: string
+          id?: string
+          indicador?: string | null
+          meses?: number[]
+          objetivo?: string | null
+          observaciones?: string | null
+          plan_id: string
+          porcentaje_avance?: number
+          presupuesto?: number | null
+          recursos?: string | null
+          responsable?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actividad?: string
+          categoria?: string
+          created_at?: string
+          empresa_id?: string
+          estado?: string
+          id?: string
+          indicador?: string | null
+          meses?: number[]
+          objetivo?: string | null
+          observaciones?: string | null
+          plan_id?: string
+          porcentaje_avance?: number
+          presupuesto?: number | null
+          recursos?: string | null
+          responsable?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividades_plan_anual_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividades_plan_anual_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plan_anual"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activos: {
         Row: {
           asignado_a: string | null
@@ -567,6 +639,7 @@ export type Database = {
           fecha_vencimiento: string | null
           id: string
           nombre: string
+          tiene_vencimiento: boolean
           tipo: string | null
           updated_at: string
           url: string | null
@@ -578,6 +651,7 @@ export type Database = {
           fecha_vencimiento?: string | null
           id?: string
           nombre: string
+          tiene_vencimiento?: boolean
           tipo?: string | null
           updated_at?: string
           url?: string | null
@@ -589,6 +663,7 @@ export type Database = {
           fecha_vencimiento?: string | null
           id?: string
           nombre?: string
+          tiene_vencimiento?: boolean
           tipo?: string | null
           updated_at?: string
           url?: string | null
@@ -609,8 +684,10 @@ export type Database = {
           created_at: string
           empresa_id: string
           estado: string
+          fecha_vencimiento: string | null
           id: string
           nombre: string
+          tiene_vencimiento: boolean
           tipo: string | null
           updated_at: string
           url: string | null
@@ -621,8 +698,10 @@ export type Database = {
           created_at?: string
           empresa_id: string
           estado?: string
+          fecha_vencimiento?: string | null
           id?: string
           nombre: string
+          tiene_vencimiento?: boolean
           tipo?: string | null
           updated_at?: string
           url?: string | null
@@ -633,8 +712,10 @@ export type Database = {
           created_at?: string
           empresa_id?: string
           estado?: string
+          fecha_vencimiento?: string | null
           id?: string
           nombre?: string
+          tiene_vencimiento?: boolean
           tipo?: string | null
           updated_at?: string
           url?: string | null
@@ -802,39 +883,69 @@ export type Database = {
       }
       empresas: {
         Row: {
+          actividad_economica: string | null
+          arl: string | null
+          ciudad: string | null
+          clase_riesgo: string | null
           created_at: string
+          departamento: string | null
           direccion: string | null
+          email: string | null
           id: string
+          logo_url: string | null
           nit: string | null
           nivel_proteccion: string | null
           nombre: string
           num_empleados_directos: number | null
+          num_empleados_indirectos: number | null
+          representante_legal: string | null
+          responsable_sgsst: string | null
           sector_industria: string | null
           telefono: string | null
           tiene_contratistas: boolean | null
           updated_at: string
         }
         Insert: {
+          actividad_economica?: string | null
+          arl?: string | null
+          ciudad?: string | null
+          clase_riesgo?: string | null
           created_at?: string
+          departamento?: string | null
           direccion?: string | null
+          email?: string | null
           id?: string
+          logo_url?: string | null
           nit?: string | null
           nivel_proteccion?: string | null
           nombre: string
           num_empleados_directos?: number | null
+          num_empleados_indirectos?: number | null
+          representante_legal?: string | null
+          responsable_sgsst?: string | null
           sector_industria?: string | null
           telefono?: string | null
           tiene_contratistas?: boolean | null
           updated_at?: string
         }
         Update: {
+          actividad_economica?: string | null
+          arl?: string | null
+          ciudad?: string | null
+          clase_riesgo?: string | null
           created_at?: string
+          departamento?: string | null
           direccion?: string | null
+          email?: string | null
           id?: string
+          logo_url?: string | null
           nit?: string | null
           nivel_proteccion?: string | null
           nombre?: string
           num_empleados_directos?: number | null
+          num_empleados_indirectos?: number | null
+          representante_legal?: string | null
+          responsable_sgsst?: string | null
           sector_industria?: string | null
           telefono?: string | null
           tiene_contratistas?: boolean | null
@@ -1152,6 +1263,50 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_anual: {
+        Row: {
+          anio: number
+          aprobado_por: string | null
+          created_at: string
+          empresa_id: string
+          estado: string
+          id: string
+          objetivo: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anio: number
+          aprobado_por?: string | null
+          created_at?: string
+          empresa_id: string
+          estado?: string
+          id?: string
+          objetivo?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          anio?: number
+          aprobado_por?: string | null
+          created_at?: string
+          empresa_id?: string
+          estado?: string
+          id?: string
+          objetivo?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_anual_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_mejora: {
         Row: {
           created_at: string
@@ -1233,6 +1388,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sedes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tareas: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          empresa_id: string
+          estado: string
+          fecha: string
+          fecha_fin: string | null
+          id: string
+          prioridad: string
+          responsable: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          empresa_id: string
+          estado?: string
+          fecha: string
+          fecha_fin?: string | null
+          id?: string
+          prioridad?: string
+          responsable?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          empresa_id?: string
+          estado?: string
+          fecha?: string
+          fecha_fin?: string | null
+          id?: string
+          prioridad?: string
+          responsable?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tareas_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
@@ -1592,7 +1797,9 @@ export type Database = {
       }
       can_create_empresa: { Args: { _user_id: string }; Returns: boolean }
       get_cumplimiento_phva: { Args: { p_empresa_id: string }; Returns: Json }
-      get_portal_cliente: { Args: { p_nit_cedula: string }; Returns: Json }
+      get_portal_cliente:
+        | { Args: { p_empresa_id: string; p_nit: string }; Returns: Json }
+        | { Args: { p_nit_cedula: string }; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
