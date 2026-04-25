@@ -50,6 +50,8 @@ const startOfWeek = (d: Date) => {
   return s;
 };
 
+interface UsuarioItem { id: string; nombre_completo: string; rol: string; }
+
 const emptyTask = { titulo: "", descripcion: "", responsable: "", prioridad: "media", fecha_fin: "" };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -68,6 +70,7 @@ export default function Calendario() {
   const [createDate, setCreateDate] = useState("");
   const [taskForm, setTaskForm] = useState(emptyTask);
   const [saving, setSaving] = useState(false);
+  const [usuarios, setUsuarios] = useState<UsuarioItem[]>([]);
   const [detailEvent, setDetailEvent] = useState<CalEvent | null>(null);
   const [dayOpen, setDayOpen] = useState<{ date: string; events: CalEvent[] } | null>(null);
 
@@ -152,6 +155,16 @@ export default function Calendario() {
   }, [empresa?.id, current]);
 
   useEffect(() => { if (empresa?.id) fetchEvents(); }, [empresa?.id, fetchEvents]);
+
+  useEffect(() => {
+    if (!empresa?.id) return;
+    (supabase as any)
+      .from("usuarios")
+      .select("id,nombre_completo,rol")
+      .eq("empresa_id", empresa.id)
+      .in("rol", ["administrador", "asistente"])
+      .then(({ data }: any) => setUsuarios(data ?? []));
+  }, [empresa?.id]);
 
   // ─── Navigation ────────────────────────────────────────────────────────────
 
@@ -382,7 +395,20 @@ export default function Calendario() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Responsable</Label>
-                <Input value={taskForm.responsable} onChange={e => setTaskForm({ ...taskForm, responsable: e.target.value })} placeholder="Nombre" />
+                <Select value={taskForm.responsable} onValueChange={v => setTaskForm({ ...taskForm, responsable: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                  <SelectContent>
+                    {usuarios.length === 0
+                      ? <SelectItem value="__none" disabled>Sin usuarios disponibles</SelectItem>
+                      : usuarios.map(u => (
+                          <SelectItem key={u.id} value={u.nombre_completo}>
+                            {u.nombre_completo}
+                            <span className="ml-2 text-[10px] text-muted-foreground">{u.rol}</span>
+                          </SelectItem>
+                        ))
+                    }
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Prioridad</Label>
