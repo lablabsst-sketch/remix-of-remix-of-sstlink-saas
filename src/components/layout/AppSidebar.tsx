@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, Truck, GraduationCap,
-  ClipboardCheck, BarChart3, FileText, CalendarRange,
+  ClipboardCheck, BarChart3, CalendarRange,
   Building2, MessageCircle, UserCheck, ShieldCheck,
   AlertTriangle, CalendarOff, Stethoscope
 } from "lucide-react";
@@ -22,7 +22,6 @@ const mainItems = [
   { title: "Capacitaciones", url: "/capacitaciones", icon: GraduationCap },
   { title: "Inspecciones", url: "/inspecciones", icon: ClipboardCheck },
   { title: "Estadísticas", url: "/estadisticas", icon: BarChart3 },
-  { title: "Documentos", url: "/documentos", icon: FileText },
   { title: "Plan Anual", url: "/plan-anual", icon: CalendarRange },
 ];
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -8,14 +8,24 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Pencil, Save, X, Upload, Users, ShieldCheck,
   Phone, Mail, MapPin, Hash, Briefcase, AlertTriangle, UserCheck,
+  FileText, Plus, Trash2, ExternalLink, Clock, CheckCircle2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +50,16 @@ interface EmpresaFull {
   logo_url: string | null;
 }
 
+interface DocEmpresa {
+  id: string;
+  nombre: string;
+  tipo: string | null;
+  estado: string;
+  url: string | null;
+  fecha_vencimiento: string | null;
+  created_at: string;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CLASES_RIESGO = ["I", "II", "III", "IV", "V"];
@@ -55,6 +75,18 @@ const ARLS = [
   "Liberty ARL",
   "Otra",
 ];
+
+const TIPOS_DOC = ["Certificación","Licencia","Contrato","Seguro","Planilla","RUT","Cámara de Comercio","Resolución","Otro"];
+
+const todayStr = new Date().toISOString().slice(0, 10);
+const in30Str  = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+
+function vencStatus(fecha: string | null): "vencido" | "proximo" | "vigente" | "sin" {
+  if (!fecha) return "sin";
+  if (fecha < todayStr) return "vencido";
+  if (fecha <= in30Str)  return "proximo";
+  return "vigente";
+}
 
 const DEPARTAMENTOS = [
   "Amazonas","Antioquia","Arauca","Atlántico","Bolívar","Boyacá","Caldas",
@@ -81,6 +113,27 @@ export default function MiEmpresa() {
   // Stats
   const [stats, setStats] = useState({ trabajadores: 0, contratistas: 0, cumplimiento: 0 });
 
+  // Documents
+  const [docs, setDocs] = useState<DocEmpresa[]>([]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [savingDoc, setSavingDoc] = useState(false);
+  const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const [docForm, setDocForm] = useState({ nombre: "", tipo: "", tieneVenc: false, fechaVenc: "" });
+  const docFileRef = useRef<HTMLInputElement>(null);
+  const [docFile, setDocFile] = useState<File | null>(null);
+
+  // ── Fetch docs ───────────────────────────────────────────────────────────
+
+  const fetchDocs = useCallback(async () => {
+    if (!authEmpresa?.id) return;
+    const { data } = await supabase
+      .from("documentos_empresa")
+      .select("*")
+      .eq("empresa_id", authEmpresa.id)
+      .order("created_at", { ascending: false });
+    setDocs(data ?? []);
+  }, [authEmpresa?.id]);
+
   // ── Fetch empresa ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -100,6 +153,8 @@ export default function MiEmpresa() {
       setLoading(false);
     });
   }, [authEmpresa?.id]);
+
+  useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
   // ── Edit ─────────────────────────────────────────────────────────────────
 
@@ -144,6 +199,53 @@ export default function MiEmpresa() {
       toast({ title: "Información actualizada" });
     }
     setSaving(false);
+  };
+
+  // ── Save doc ─────────────────────────────────────────────────────────────
+
+  const saveDoc = async () => {
+    if (!authEmpresa?.id || !docForm.nombre.trim()) return;
+    setSavingDoc(true);
+    try {
+      let url: string | null = null;
+      if (docFile) {
+        const ext = docFile.name.split(".").pop();
+        const path = `empresa/${authEmpresa.id}/${Date.now()}.${ext}`;
+        await supabase.storage.from("documentos").upload(path, docFile, { upsert: true });
+        const { data: { publicUrl } } = supabase.storage.from("documentos").getPublicUrl(path);
+        url = publicUrl;
+      }
+      await supabase.from("documentos_empresa").insert({
+        empresa_id: authEmpresa.id,
+        nombre: docForm.nombre,
+        tipo: docForm.tipo || null,
+        estado: "activo",
+        url,
+        fecha_vencimiento: docForm.tieneVenc && docForm.fechaVenc ? docForm.fechaVenc : null,
+      });
+      setUploadOpen(false);
+      setDocForm({ nombre: "", tipo: "", tieneVenc: false, fechaVenc: "" });
+      setDocFile(null);
+      fetchDocs();
+      toast({ title: "Documento guardado" });
+    } catch {
+      toast({ title: "Error al guardar", variant: "destructive" });
+    } finally {
+      setSavingDoc(false);
+    }
+  };
+
+  const deleteDoc = async () => {
+    if (!deleteDocId) return;
+    const doc = docs.find(d => d.id === deleteDocId);
+    if (doc?.url) {
+      const parts = doc.url.split("/documentos/");
+      if (parts[1]) await supabase.storage.from("documentos").remove([parts[1]]);
+    }
+    await supabase.from("documentos_empresa").delete().eq("id", deleteDocId);
+    setDeleteDocId(null);
+    fetchDocs();
+    toast({ title: "Documento eliminado" });
   };
 
   // ── Logo upload ───────────────────────────────────────────────────────────
@@ -445,7 +547,142 @@ export default function MiEmpresa() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ── Documentos ── */}
+        <div className="bg-surface rounded-xl border-[0.5px] border-border p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[13px] font-medium flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" /> Documentos de la Empresa
+            </h3>
+            <Button size="sm" onClick={() => setUploadOpen(true)}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> Subir
+            </Button>
+          </div>
+
+          {docs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+              <FileText className="w-8 h-8 opacity-20" />
+              <p className="text-sm">Sin documentos. Sube el primero.</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {docs.map(d => {
+                const st = vencStatus(d.fecha_vencimiento);
+                return (
+                  <div key={d.id} className="flex items-center gap-3 py-2.5 group">
+                    <FileText className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate">{d.nombre}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        {d.tipo && <Badge variant="outline" className="text-[10px] h-4 px-1">{d.tipo}</Badge>}
+                        {st !== "sin" && d.fecha_vencimiento && (
+                          <Badge variant="outline" className={cn("text-[10px] h-4 px-1 flex items-center gap-1",
+                            st === "vencido" ? "bg-red-50 text-red-600 border-red-200" :
+                            st === "proximo" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
+                            "bg-green-50 text-green-600 border-green-200"
+                          )}>
+                            {st === "vencido" ? <AlertTriangle className="h-2.5 w-2.5" /> :
+                             st === "proximo" ? <Clock className="h-2.5 w-2.5" /> :
+                             <CheckCircle2 className="h-2.5 w-2.5" />}
+                            {new Date(d.fecha_vencimiento + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {d.url && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                          <a href={d.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteDocId(d.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ── Upload doc dialog ── */}
+      <Dialog open={uploadOpen} onOpenChange={v => { if (!v) { setUploadOpen(false); setDocFile(null); setDocForm({ nombre: "", tipo: "", tieneVenc: false, fechaVenc: "" }); }}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Subir documento</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/40 transition-colors"
+              onClick={() => docFileRef.current?.click()}
+            >
+              {docFile ? (
+                <p className="text-sm font-medium truncate">{docFile.name}</p>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                  <Upload className="h-6 w-6" />
+                  <p className="text-sm">Haz clic para seleccionar archivo</p>
+                </div>
+              )}
+              <input
+                ref={docFileRef} type="file" className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0] ?? null;
+                  setDocFile(f);
+                  if (f && !docForm.nombre) setDocForm(p => ({ ...p, nombre: f.name.replace(/\.[^.]+$/, "") }));
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nombre *</Label>
+              <Input value={docForm.nombre} onChange={e => setDocForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre del documento" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo</Label>
+              <Select value={docForm.tipo} onValueChange={v => setDocForm(p => ({ ...p, tipo: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                <SelectContent>{TIPOS_DOC.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={docForm.tieneVenc} onCheckedChange={v => setDocForm(p => ({ ...p, tieneVenc: v }))} id="venc-sw" />
+              <Label htmlFor="venc-sw" className="cursor-pointer">Tiene fecha de vencimiento</Label>
+            </div>
+            {docForm.tieneVenc && (
+              <div className="space-y-1.5">
+                <Label>Fecha de vencimiento</Label>
+                <Input type="date" value={docForm.fechaVenc} onChange={e => setDocForm(p => ({ ...p, fechaVenc: e.target.value }))} />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={saveDoc} disabled={savingDoc || !docForm.nombre.trim()}>
+              {savingDoc ? "Subiendo…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete doc confirm ── */}
+      <AlertDialog open={!!deleteDocId} onOpenChange={open => !open && setDeleteDocId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+            <AlertDialogDescription>Se eliminará el archivo. Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteDoc} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
