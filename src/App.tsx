@@ -23,6 +23,7 @@ import FirmaCapacitacion from "./pages/FirmaCapacitacion.tsx";
 import Calendario from "./pages/Calendario.tsx";
 import PlanAnual from "./pages/PlanAnual.tsx";
 import MiEmpresa from "./pages/MiEmpresa.tsx";
+import Documentos from "./pages/Documentos.tsx";
 
 const queryClient = new QueryClient();
 
@@ -125,6 +126,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <PlanAnual />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documentos"
+              element={
+                <ProtectedRoute>
+                  <Documentos />
                 </ProtectedRoute>
               }
             />
