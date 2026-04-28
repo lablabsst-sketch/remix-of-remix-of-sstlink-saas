@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardCheck, Plus, Pencil, Trash2, Printer, Camera, X,
-  CheckCircle2, AlertCircle, Clock, ChevronRight,
+  CheckCircle2, AlertCircle, Clock, ChevronRight, Info, Flag,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -738,15 +738,9 @@ export default function InspeccionesPage() {
                   <Badge variant="outline" className={`text-[10px] ${TIPO_CONFIG[inspeccionActual.tipo]?.color ?? ""}`}>
                     {TIPO_CONFIG[inspeccionActual.tipo]?.label}
                   </Badge>
-                  <Select value={inspeccionActual.estado} onValueChange={updateEstadoInsp}>
-                    <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="en-proceso">En proceso</SelectItem>
-                      <SelectItem value="completado">Completado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Badge variant="outline" className={`text-[10px] ${ESTADO_COLOR[inspeccionActual.estado] ?? ""}`}>
+                    {inspeccionActual.estado.replace("-", " ")}
+                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {new Date(inspeccionActual.fecha + "T00:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -756,6 +750,51 @@ export default function InspeccionesPage() {
                   <p className="text-sm text-muted-foreground bg-muted/40 rounded p-2">{inspeccionActual.observaciones_generales}</p>
                 )}
               </DialogHeader>
+
+              {/* ── Guía paso a paso ── */}
+              {inspeccionActual.estado !== "completado" && inspeccionActual.estado !== "cancelado" && (
+                <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5" /> Cómo realizar esta inspección
+                  </p>
+                  <ol className="space-y-2 text-sm text-indigo-900">
+                    <li className="flex gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">1</span>
+                      <span>Ve a la pestaña <strong>Elementos</strong> y registra cada elemento inspeccionado con su resultado (Bueno · Malo · N/A). Puedes agregar fotos y observaciones.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">2</span>
+                      <span>Si encontraste hallazgos o elementos en mal estado, ve a <strong>Acciones correctivas</strong> y registra qué debe corregirse, quién es el responsable y la fecha límite. Quedarán programadas automáticamente en el Calendario SST.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">3</span>
+                      <span>Cuando termines, cambia el estado a <strong>En proceso</strong> si aún hay acciones pendientes, o haz clic en <strong>Finalizar inspección</strong> para marcarla como completada.</span>
+                    </li>
+                  </ol>
+                  <div className="flex items-start gap-2 pt-1 border-t border-indigo-200 mt-1">
+                    <Flag className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-800">
+                      <strong>Consejo:</strong> Si los elementos tienen fechas de revisión distintas (ej: algunos extintores se recargan en enero y otros en septiembre), crea inspecciones separadas por grupo. Así el sistema genera recordatorios independientes en el calendario para cada vencimiento.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Estado selector + cambio */}
+              {inspeccionActual.estado !== "completado" && inspeccionActual.estado !== "cancelado" && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Estado actual:</span>
+                  <Select value={inspeccionActual.estado} onValueChange={updateEstadoInsp}>
+                    <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="en-proceso">En proceso</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">(puedes actualizarlo cuando avance la inspección)</span>
+                </div>
+              )}
 
               <Tabs defaultValue="elementos" className="mt-2">
                 <TabsList>
@@ -885,6 +924,31 @@ export default function InspeccionesPage() {
                   </div>
                 </TabsContent>
               </Tabs>
+
+              {/* ── Footer: Finalizar ── */}
+              {inspeccionActual.estado !== "completado" && inspeccionActual.estado !== "cancelado" && (
+                <div className="border-t pt-4 flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-xs text-muted-foreground">
+                    Cuando hayas registrado todos los elementos y las acciones correctivas, finaliza la inspección.
+                  </p>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={async () => {
+                      await updateEstadoInsp("completado");
+                      setDetalleOpen(false);
+                      toast({ title: `Inspección ${inspeccionActual.codigo} finalizada` });
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1.5" /> Finalizar inspección
+                  </Button>
+                </div>
+              )}
+              {inspeccionActual.estado === "completado" && (
+                <div className="border-t pt-4 flex items-center gap-2 text-green-700 bg-green-50 rounded-lg p-3">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <p className="text-sm font-medium">Inspección completada</p>
+                </div>
+              )}
             </>
           )}
         </DialogContent>
