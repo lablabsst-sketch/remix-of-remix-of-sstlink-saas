@@ -96,6 +96,20 @@ export function AppSidebar() {
   const toggle = (id: string) =>
     setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  // Estado expandido/compacto persistido en localStorage
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(STORAGE_KEY) === "1";
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, expanded ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [expanded]);
+
   // Ref al <nav> raíz para navegación con flechas entre todos los elementos focuseables
   const navRef = useRef<HTMLElement>(null);
 
