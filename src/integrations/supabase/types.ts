@@ -80,6 +80,56 @@ export type Database = {
           },
         ]
       }
+      acciones_correctivas: {
+        Row: {
+          created_at: string | null
+          descripcion: string
+          empresa_id: string
+          estado: string | null
+          fecha_limite: string | null
+          id: string
+          inspeccion_id: string | null
+          responsable: string | null
+          responsable_id: string | null
+          tarea_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descripcion: string
+          empresa_id: string
+          estado?: string | null
+          fecha_limite?: string | null
+          id?: string
+          inspeccion_id?: string | null
+          responsable?: string | null
+          responsable_id?: string | null
+          tarea_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descripcion?: string
+          empresa_id?: string
+          estado?: string | null
+          fecha_limite?: string | null
+          id?: string
+          inspeccion_id?: string | null
+          responsable?: string | null
+          responsable_id?: string | null
+          tarea_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acciones_correctivas_inspeccion_id_fkey"
+            columns: ["inspeccion_id"]
+            isOneToOne: false
+            referencedRelation: "inspecciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       actividades_plan_anual: {
         Row: {
           actividad: string
@@ -1059,6 +1109,107 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inspeccion_elementos: {
+        Row: {
+          campos_libres: Json | null
+          checklist: Json | null
+          created_at: string | null
+          empresa_id: string
+          foto_urls: Json | null
+          id: string
+          identificador: string
+          inspeccion_id: string | null
+          numero: number | null
+          observaciones: string | null
+          subtipo: string | null
+        }
+        Insert: {
+          campos_libres?: Json | null
+          checklist?: Json | null
+          created_at?: string | null
+          empresa_id: string
+          foto_urls?: Json | null
+          id?: string
+          identificador: string
+          inspeccion_id?: string | null
+          numero?: number | null
+          observaciones?: string | null
+          subtipo?: string | null
+        }
+        Update: {
+          campos_libres?: Json | null
+          checklist?: Json | null
+          created_at?: string | null
+          empresa_id?: string
+          foto_urls?: Json | null
+          id?: string
+          identificador?: string
+          inspeccion_id?: string | null
+          numero?: number | null
+          observaciones?: string | null
+          subtipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspeccion_elementos_inspeccion_id_fkey"
+            columns: ["inspeccion_id"]
+            isOneToOne: false
+            referencedRelation: "inspecciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspecciones: {
+        Row: {
+          asociado_id: string | null
+          asociado_nombre: string | null
+          asociado_tipo: string | null
+          codigo: string | null
+          created_at: string | null
+          empresa_id: string
+          estado: string | null
+          fecha: string
+          id: string
+          observaciones_generales: string | null
+          responsable: string | null
+          responsable_id: string | null
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          asociado_id?: string | null
+          asociado_nombre?: string | null
+          asociado_tipo?: string | null
+          codigo?: string | null
+          created_at?: string | null
+          empresa_id: string
+          estado?: string | null
+          fecha?: string
+          id?: string
+          observaciones_generales?: string | null
+          responsable?: string | null
+          responsable_id?: string | null
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          asociado_id?: string | null
+          asociado_nombre?: string | null
+          asociado_tipo?: string | null
+          codigo?: string | null
+          created_at?: string | null
+          empresa_id?: string
+          estado?: string | null
+          fecha?: string
+          id?: string
+          observaciones_generales?: string | null
+          responsable?: string | null
+          responsable_id?: string | null
+          tipo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       items_plan_mejora: {
         Row: {
