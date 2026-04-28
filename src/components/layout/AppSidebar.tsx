@@ -3,14 +3,17 @@ import {
   ClipboardCheck, BarChart3, CalendarRange,
   Building2, MessageCircle, UserCheck, ShieldCheck,
   AlertTriangle, CalendarOff, Stethoscope,
-  ChevronDown, LayoutGrid, HeartPulse, BookOpen
+  ChevronDown, LayoutGrid, HeartPulse, BookOpen,
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
-import { useRef, useState, KeyboardEvent } from "react";
+import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import logoSstlink from "@/assets/logo-sstlink.png";
+
+const STORAGE_KEY = "sstlink:sidebar:expanded";
 
 type NavItem = {
   title: string;
