@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useRef, useState, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import logoSstlink from "@/assets/logo-sstlink.png";
