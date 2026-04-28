@@ -3,14 +3,17 @@ import {
   ClipboardCheck, BarChart3, CalendarRange,
   Building2, MessageCircle, UserCheck, ShieldCheck,
   AlertTriangle, CalendarOff, Stethoscope,
-  ChevronDown, LayoutGrid, HeartPulse, BookOpen
+  ChevronDown, LayoutGrid, HeartPulse, BookOpen,
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
-import { useRef, useState, KeyboardEvent } from "react";
+import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import logoSstlink from "@/assets/logo-sstlink.png";
+
+const STORAGE_KEY = "sstlink:sidebar:expanded";
 
 type NavItem = {
   title: string;
@@ -93,6 +96,20 @@ export function AppSidebar() {
   const toggle = (id: string) =>
     setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  // Estado expandido/compacto persistido en localStorage
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(STORAGE_KEY) === "1";
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, expanded ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [expanded]);
+
   // Ref al <nav> raíz para navegación con flechas entre todos los elementos focuseables
   const navRef = useRef<HTMLElement>(null);
 
@@ -143,40 +160,56 @@ export function AppSidebar() {
 
   const renderItem = (item: NavItem) => {
     const isActive = location.pathname === item.url;
-    return (
-      <Tooltip key={item.url}>
-        <TooltipTrigger asChild>
-          <NavLink
-            to={item.url}
-            data-sidebar-focusable="true"
-            aria-current={isActive ? "page" : undefined}
-            aria-label={item.title}
-            className={cn(
-              "group w-10 h-10 flex items-center justify-center rounded-lg relative",
-              "transition-all duration-200 ease-out",
-              "hover:scale-125 hover:-translate-y-0.5 active:scale-110",
-              focusRing,
-              isActive
-                ? "bg-accent text-accent-foreground shadow-sm"
-                : "text-hint hover:bg-background hover:text-foreground"
-            )}
-          >
-            <item.icon
-              className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110"
-              style={item.color ? { color: item.color } : undefined}
+    const link = (
+      <NavLink
+        to={item.url}
+        data-sidebar-focusable="true"
+        aria-current={isActive ? "page" : undefined}
+        aria-label={item.title}
+        className={cn(
+          "group relative flex items-center rounded-lg",
+          "transition-all duration-200 ease-out",
+          focusRing,
+          expanded
+            ? "w-[calc(100%-1rem)] h-9 px-2.5 gap-2.5 mx-2 active:scale-[0.99]"
+            : "w-10 h-10 justify-center hover:scale-125 hover:-translate-y-0.5 active:scale-110",
+          isActive
+            ? "bg-accent text-accent-foreground shadow-sm"
+            : "text-hint hover:bg-background hover:text-foreground"
+        )}
+      >
+        <item.icon
+          className={cn(
+            "shrink-0 transition-transform duration-200",
+            expanded ? "w-[18px] h-[18px]" : "w-[18px] h-[18px] group-hover:scale-110"
+          )}
+          style={item.color ? { color: item.color } : undefined}
+          aria-hidden="true"
+        />
+        {expanded && (
+          <span className="text-[13px] truncate">{item.title}</span>
+        )}
+        {item.badge && (
+          <>
+            <span
+              className={cn(
+                "absolute w-1.5 h-1.5 rounded-full bg-destructive",
+                expanded ? "top-2 right-2.5" : "top-1.5 right-1.5"
+              )}
               aria-hidden="true"
             />
-            {item.badge && (
-              <>
-                <span
-                  className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-destructive"
-                  aria-hidden="true"
-                />
-                <span className="sr-only">(novedades)</span>
-              </>
-            )}
-          </NavLink>
-        </TooltipTrigger>
+            <span className="sr-only">(novedades)</span>
+          </>
+        )}
+      </NavLink>
+    );
+
+    // En modo expandido, los labels son visibles → no necesitamos tooltip
+    if (expanded) return <div key={item.url} className="w-full">{link}</div>;
+
+    return (
+      <Tooltip key={item.url}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
         <TooltipContent side="right" className="bg-foreground text-background text-[11px]">
           {item.title}
         </TooltipContent>
@@ -190,6 +223,46 @@ export function AppSidebar() {
     const headerId = `sidebar-cat-header-${cat.id}`;
     const panelId = `sidebar-cat-panel-${cat.id}`;
 
+    const headerBtn = (
+      <button
+        id={headerId}
+        type="button"
+        onClick={() => toggle(cat.id)}
+        data-sidebar-focusable="true"
+        data-category-toggle={cat.id}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={`${cat.title}, ${open ? "contraer" : "expandir"} categoría`}
+        className={cn(
+          "group flex items-center rounded-md relative",
+          "transition-all duration-200 ease-out",
+          "text-hint/70 hover:text-foreground hover:bg-background",
+          focusRing,
+          hasActive && "text-foreground",
+          expanded
+            ? "w-[calc(100%-1rem)] h-7 px-2.5 gap-2 mx-2 justify-between"
+            : "w-10 h-7 justify-center"
+        )}
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <cat.icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          {expanded && (
+            <span className="text-[11px] uppercase tracking-wide truncate">
+              {cat.title}
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          className={cn(
+            "w-2.5 h-2.5 transition-transform duration-200 shrink-0",
+            expanded ? "" : "ml-0.5",
+            !open && "-rotate-90"
+          )}
+          aria-hidden="true"
+        />
+      </button>
+    );
+
     return (
       <div
         key={cat.id}
@@ -197,40 +270,16 @@ export function AppSidebar() {
         aria-labelledby={headerId}
         className="flex flex-col items-center w-full"
       >
-        {/* Header / toggle de categoría */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              id={headerId}
-              type="button"
-              onClick={() => toggle(cat.id)}
-              data-sidebar-focusable="true"
-              data-category-toggle={cat.id}
-              aria-expanded={open}
-              aria-controls={panelId}
-              aria-label={`${cat.title}, ${open ? "contraer" : "expandir"} categoría`}
-              className={cn(
-                "group w-10 h-7 flex items-center justify-center rounded-md relative",
-                "transition-all duration-200 ease-out",
-                "text-hint/70 hover:text-foreground hover:bg-background",
-                focusRing,
-                hasActive && "text-foreground"
-              )}
-            >
-              <cat.icon className="w-3.5 h-3.5" aria-hidden="true" />
-              <ChevronDown
-                className={cn(
-                  "w-2.5 h-2.5 ml-0.5 transition-transform duration-200",
-                  !open && "-rotate-90"
-                )}
-                aria-hidden="true"
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-foreground text-background text-[11px]">
-            {cat.title}
-          </TooltipContent>
-        </Tooltip>
+        {expanded ? (
+          headerBtn
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>{headerBtn}</TooltipTrigger>
+            <TooltipContent side="right" className="bg-foreground text-background text-[11px]">
+              {cat.title}
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Items de la categoría */}
         <div
@@ -239,22 +288,33 @@ export function AppSidebar() {
           aria-labelledby={headerId}
           aria-hidden={!open}
           className={cn(
-            "flex flex-col items-center gap-1 overflow-hidden transition-all duration-300 ease-out w-full",
+            "flex flex-col gap-1 overflow-hidden transition-all duration-300 ease-out w-full",
+            expanded ? "items-stretch" : "items-center",
             open ? "max-h-[500px] opacity-100 mt-1" : "max-h-0 opacity-0"
           )}
         >
-          {/* Solo renderiza items cuando está abierta para evitar tab hacia elementos ocultos */}
           {open && cat.items.map(renderItem)}
         </div>
 
         {/* Separador sutil */}
-        <div className="w-6 h-px bg-border/60 my-2" aria-hidden="true" />
+        <div
+          className={cn("h-px bg-border/60 my-2", expanded ? "w-[calc(100%-1.5rem)] mx-3" : "w-6")}
+          aria-hidden="true"
+        />
       </div>
     );
   };
 
+  const ToggleIcon = expanded ? PanelLeftClose : PanelLeftOpen;
+
   return (
-    <aside className="hidden md:flex flex-col w-16 bg-surface border-r-[0.5px] border-border items-center py-4 shrink-0 overflow-y-auto">
+    <aside
+      className={cn(
+        "hidden md:flex flex-col bg-surface border-r-[0.5px] border-border py-4 shrink-0 overflow-y-auto",
+        "transition-[width] duration-300 ease-out",
+        expanded ? "w-[220px] items-stretch" : "w-16 items-center"
+      )}
+    >
       {/* Skip link para saltar al contenido principal */}
       <a
         href="#main-content"
@@ -266,15 +326,51 @@ export function AppSidebar() {
         Saltar al contenido
       </a>
 
-      {/* Logo */}
-      <img src={logoSstlink} alt="SSTLink" className="w-9 h-9 object-contain mb-4" />
+      {/* Logo + toggle */}
+      <div
+        className={cn(
+          "flex items-center mb-4",
+          expanded ? "justify-between px-3" : "flex-col gap-2 justify-center"
+        )}
+      >
+        <div className={cn("flex items-center gap-2", expanded && "min-w-0")}>
+          <img src={logoSstlink} alt="SSTLink" className="w-9 h-9 object-contain shrink-0" />
+          {expanded && (
+            <span className="text-[14px] font-medium text-foreground truncate">SSTLink</span>
+          )}
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? "Contraer barra lateral" : "Expandir barra lateral"}
+              aria-pressed={expanded}
+              className={cn(
+                "w-7 h-7 flex items-center justify-center rounded-md",
+                "text-hint hover:text-foreground hover:bg-background",
+                "transition-colors duration-200",
+                focusRing
+              )}
+            >
+              <ToggleIcon className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="bg-foreground text-background text-[11px]">
+            {expanded ? "Contraer" : "Expandir"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       {/* Navegación principal */}
       <nav
         ref={navRef}
         aria-label="Navegación principal"
         onKeyDown={handleNavKeyDown}
-        className="flex flex-col items-center flex-1 w-full"
+        className={cn(
+          "flex flex-col flex-1 w-full",
+          expanded ? "items-stretch" : "items-center"
+        )}
       >
         {categories.map(renderCategory)}
       </nav>
@@ -283,7 +379,10 @@ export function AppSidebar() {
       <nav
         aria-label="Navegación secundaria"
         onKeyDown={handleNavKeyDown}
-        className="flex flex-col items-center gap-1 mt-auto pt-2"
+        className={cn(
+          "flex flex-col gap-1 mt-auto pt-2 w-full",
+          expanded ? "items-stretch" : "items-center"
+        )}
       >
         {bottomItems.map(renderItem)}
       </nav>
