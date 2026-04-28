@@ -1112,6 +1112,7 @@ export type Database = {
       }
       inspeccion_elementos: {
         Row: {
+          activo_id: string | null
           campos_libres: Json | null
           checklist: Json | null
           created_at: string | null
@@ -1125,6 +1126,7 @@ export type Database = {
           subtipo: string | null
         }
         Insert: {
+          activo_id?: string | null
           campos_libres?: Json | null
           checklist?: Json | null
           created_at?: string | null
@@ -1138,6 +1140,7 @@ export type Database = {
           subtipo?: string | null
         }
         Update: {
+          activo_id?: string | null
           campos_libres?: Json | null
           checklist?: Json | null
           created_at?: string | null
@@ -1151,6 +1154,13 @@ export type Database = {
           subtipo?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inspeccion_elementos_activo_id_fkey"
+            columns: ["activo_id"]
+            isOneToOne: false
+            referencedRelation: "activos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inspeccion_elementos_inspeccion_id_fkey"
             columns: ["inspeccion_id"]
