@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Shield, Users, FileText, BarChart3, ClipboardCheck, AlertTriangle,
   BookOpen, GraduationCap, ArrowRight, Check, Star, ExternalLink,
-  ChevronRight, Mail, MapPin, Phone
+  ChevronRight, Mail, MapPin, Phone, Menu
 } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useScrollFadeIn } from "@/hooks/useScrollFadeIn";
 import logoSstlink from "@/assets/logo-sstlink.png";
 
@@ -13,13 +15,21 @@ const fadeClass = (visible: boolean) =>
 
 /* ───────── Navbar ───────── */
 function LandingNav() {
+  const [open, setOpen] = useState(false);
   const focusRing =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md";
+
+  const mobileLinks = [
+    { href: "#features", label: "Características" },
+    { href: "#pricing", label: "Planes" },
+    { href: "#blog", label: "Blog" },
+  ];
+
   return (
     <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent" aria-label="Navegación principal">
       <div className="max-w-6xl mx-auto flex items-center justify-between h-14 px-4 md:px-6 mt-2">
         {/* Logo */}
-        <Link to="/" className={`flex items-center gap-2 ${focusRing}`} aria-label="SSTLink — Ir al inicio">
+        <Link to="/" className={`flex items-center gap-2 min-h-[44px] ${focusRing}`} aria-label="SSTLink — Ir al inicio">
           <img src={logoSstlink} alt="SSTLink" className="h-8 w-auto" />
         </Link>
 
@@ -31,7 +41,7 @@ function LandingNav() {
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <a
             href="https://sstalent.com"
             target="_blank"
@@ -41,12 +51,62 @@ function LandingNav() {
           >
             SSTalent <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
-          <Link to="/login" aria-label="Iniciar sesión en SSTLink" className={focusRing}>
+          <Link to="/login" aria-label="Iniciar sesión en SSTLink" className={`hidden sm:inline-flex ${focusRing}`}>
             <Button variant="ghost" size="sm" className="text-xs">Iniciar sesión</Button>
           </Link>
           <Link to="/register" aria-label="Crear una cuenta nueva en SSTLink" className={focusRing}>
             <Button size="sm" className="text-xs">Crear cuenta</Button>
           </Link>
+
+          {/* Mobile hamburger */}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                aria-label="Abrir menú"
+                className={`md:hidden w-11 h-11 flex items-center justify-center text-foreground hover:bg-surface/60 ${focusRing}`}
+              >
+                <Menu className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[260px] p-0 flex flex-col">
+              <SheetTitle className="sr-only">Menú</SheetTitle>
+              <SheetDescription className="sr-only">Navegación principal de SSTLink</SheetDescription>
+              <div className="flex items-center justify-between px-4 h-14 border-b-[0.5px] border-border">
+                <img src={logoSstlink} alt="SSTLink" className="h-7 w-auto" />
+              </div>
+              <nav className="flex-1 px-2 py-3 flex flex-col gap-1" aria-label="Navegación móvil">
+                {mobileLinks.map((l) => (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center px-3 min-h-[44px] rounded-md text-[14px] text-foreground hover:bg-background ${focusRing}`}
+                  >
+                    {l.label}
+                  </a>
+                ))}
+                <a
+                  href="https://sstalent.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                  aria-label="Visitar SSTalent (se abre en una nueva pestaña)"
+                  className={`flex items-center justify-between px-3 min-h-[44px] rounded-md text-[14px] text-foreground hover:bg-background ${focusRing}`}
+                >
+                  SSTalent <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                </a>
+              </nav>
+              <div className="border-t-[0.5px] border-border p-3 flex flex-col gap-2">
+                <Link to="/login" onClick={() => setOpen(false)}>
+                  <Button variant="outline" size="sm" className="w-full">Iniciar sesión</Button>
+                </Link>
+                <Link to="/register" onClick={() => setOpen(false)}>
+                  <Button size="sm" className="w-full">Crear cuenta</Button>
+                </Link>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
