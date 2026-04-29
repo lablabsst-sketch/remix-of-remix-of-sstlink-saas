@@ -3,7 +3,7 @@ import {
   ClipboardCheck, BarChart3, CalendarRange,
   Building2, MessageCircle, UserCheck, ShieldCheck,
   AlertTriangle, CalendarOff, Stethoscope,
-  LayoutGrid, HeartPulse, BookOpen, LogOut, X,
+  LayoutGrid, HeartPulse, BookOpen, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
