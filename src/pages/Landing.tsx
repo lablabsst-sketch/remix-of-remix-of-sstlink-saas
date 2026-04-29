@@ -359,7 +359,7 @@ function Footer() {
 /* ───────── Page ───────── */
 export default function Landing() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
       <LandingNav />
       <main className="flex-1">
         <HeroSection />
