@@ -10,7 +10,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ReactNode, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { VisuallyHidden } from "@/components/ui/visually-hidden";
 import { supabase } from "@/integrations/supabase/client";
 import logoSstlink from "@/assets/logo-sstlink.png";
 
@@ -106,10 +105,8 @@ export function MobileNavSheet({ trigger }: MobileNavSheetProps) {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
-        <VisuallyHidden>
-          <SheetTitle>Menú de navegación</SheetTitle>
-          <SheetDescription>Accede a todos los módulos de SSTLink</SheetDescription>
-        </VisuallyHidden>
+        <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+        <SheetDescription className="sr-only">Accede a todos los módulos de SSTLink</SheetDescription>
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-14 border-b-[0.5px] border-border shrink-0">
