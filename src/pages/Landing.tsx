@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Shield, Users, FileText, BarChart3, ClipboardCheck, AlertTriangle,
   BookOpen, GraduationCap, ArrowRight, Check, Star, ExternalLink,
-  ChevronRight, Mail, MapPin, Phone, Menu, X
+  ChevronRight, Mail, MapPin, Phone, Menu
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useScrollFadeIn } from "@/hooks/useScrollFadeIn";
