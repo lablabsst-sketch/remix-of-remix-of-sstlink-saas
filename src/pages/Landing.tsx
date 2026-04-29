@@ -13,19 +13,21 @@ const fadeClass = (visible: boolean) =>
 
 /* ───────── Navbar ───────── */
 function LandingNav() {
+  const focusRing =
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md";
   return (
-    <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent">
+    <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent" aria-label="Navegación principal">
       <div className="max-w-6xl mx-auto flex items-center justify-between h-14 px-4 md:px-6 mt-2">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className={`flex items-center gap-2 ${focusRing}`} aria-label="SSTLink — Ir al inicio">
           <img src={logoSstlink} alt="SSTLink" className="h-8 w-auto" />
         </Link>
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Características</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">Planes</a>
-          <a href="#blog" className="hover:text-foreground transition-colors">Blog</a>
+          <a href="#features" aria-label="Ver características" className={`hover:text-foreground transition-colors px-1 py-0.5 ${focusRing}`}>Características</a>
+          <a href="#pricing" aria-label="Ver planes y precios" className={`hover:text-foreground transition-colors px-1 py-0.5 ${focusRing}`}>Planes</a>
+          <a href="#blog" aria-label="Ir al blog" className={`hover:text-foreground transition-colors px-1 py-0.5 ${focusRing}`}>Blog</a>
         </div>
 
         {/* Right */}
@@ -34,14 +36,15 @@ function LandingNav() {
             href="https://sstalent.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Visitar SSTalent (se abre en una nueva pestaña)"
+            className={`hidden sm:flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 ${focusRing}`}
           >
-            SSTalent <ExternalLink className="w-3.5 h-3.5" />
+            SSTalent <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
-          <Link to="/login">
+          <Link to="/login" aria-label="Iniciar sesión en SSTLink" className={focusRing}>
             <Button variant="ghost" size="sm" className="text-xs">Iniciar sesión</Button>
           </Link>
-          <Link to="/register">
+          <Link to="/register" aria-label="Crear una cuenta nueva en SSTLink" className={focusRing}>
             <Button size="sm" className="text-xs">Crear cuenta</Button>
           </Link>
         </div>
