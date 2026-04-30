@@ -27,8 +27,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardCheck, Plus, Pencil, Trash2, Printer, Camera, X,
   CheckCircle2, AlertCircle, Clock, ChevronRight, Info, Flag,
-  Package, History, Search,
+  Package, History, Search, Upload,
 } from "lucide-react";
+import { ImportarModal, type ImportTipo } from "@/components/importar/ImportarModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,8 @@ export default function InspeccionesPage() {
   const [activoHistorial, setActivoHistorial] = useState<{ insp: Inspeccion; elem: InspeccionElemento } | null>(null);
   const [historialData, setHistorialData] = useState<{ inspeccion: Inspeccion; elemento: InspeccionElemento }[]>([]);
   const [historialOpen, setHistorialOpen] = useState(false);
+  const [importTipo, setImportTipo] = useState<ImportTipo>("extintores");
+  const [importOpen, setImportOpen] = useState(false);
 
   // ── Shared ───────────────────────────────────────────────────────────────
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -630,11 +633,23 @@ export default function InspeccionesPage() {
         </div>
         <div className="flex gap-2">
           {mainTab === "inventario" ? (
-            <Button size="sm" onClick={() => {
-              setEditingActivo(null); setFormActivo(blankActivo()); setActivoDialog(true);
-            }}>
-              <Plus className="w-4 h-4 mr-1.5" /> Agregar activo
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => {
+                setImportTipo("extintores"); setImportOpen(true);
+              }}>
+                <Upload className="w-4 h-4 mr-1.5" /> Importar extintores
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => {
+                setImportTipo("botiquines"); setImportOpen(true);
+              }}>
+                <Upload className="w-4 h-4 mr-1.5" /> Importar botiquines
+              </Button>
+              <Button size="sm" onClick={() => {
+                setEditingActivo(null); setFormActivo(blankActivo()); setActivoDialog(true);
+              }}>
+                <Plus className="w-4 h-4 mr-1.5" /> Agregar activo
+              </Button>
+            </>
           ) : (
             <>
               <Button variant="outline" size="sm" onClick={() => { setInformeOpen(true); setInformeGenerado(false); }}>
@@ -1682,6 +1697,13 @@ export default function InspeccionesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImportarModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        tipo={importTipo}
+        onSuccess={fetchActivos}
+      />
 
     </AppLayout>
   );

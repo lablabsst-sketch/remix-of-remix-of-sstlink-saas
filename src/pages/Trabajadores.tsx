@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Users, Eye } from "lucide-react";
+import { Plus, Search, Users, Eye, Upload } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
 import { EstadoChip } from "@/components/trabajadores/EstadoChip";
 import { VerificadoToggle } from "@/components/trabajadores/VerificadoToggle";
+import { ImportarModal } from "@/components/importar/ImportarModal";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,7 @@ export default function Trabajadores() {
   const [filterEstado, setFilterEstado] = useState("todos");
   const [filterCargo, setFilterCargo] = useState("todos");
   const [showModal, setShowModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const fetchWorkers = useCallback(async () => {
     if (!empresa?.id) return;
@@ -120,10 +122,16 @@ export default function Trabajadores() {
               <p className="text-xs text-muted-foreground">{activeCount} activos</p>
             )}
           </div>
-          <Button onClick={() => setShowModal(true)} className="gap-1.5 text-xs h-9">
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            Añadir Trabajador
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)} className="gap-1.5 text-xs h-9">
+              <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+              Importar CSV
+            </Button>
+            <Button onClick={() => setShowModal(true)} className="gap-1.5 text-xs h-9">
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+              Añadir Trabajador
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -284,6 +292,13 @@ export default function Trabajadores() {
         onOpenChange={setShowModal}
         empresaId={empresa?.id ?? null}
         onSuccess={handleWorkerAdded}
+      />
+
+      <ImportarModal
+        open={showImport}
+        onOpenChange={setShowImport}
+        tipo="trabajadores"
+        onSuccess={fetchWorkers}
       />
     </AppLayout>
   );
