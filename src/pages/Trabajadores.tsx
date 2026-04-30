@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Users, Eye, Upload } from "lucide-react";
+import { Plus, Search, Users, Eye, Upload, Download } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
@@ -40,8 +40,29 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("es-CO", { month: "short", day: "numeric", year: "numeric" });
 }
 
+// ── CSV export helper ──────────────────────────────────────────────────────────
+function escapeCSVVal(v: any): string {
+  const s = v == null ? "" : String(v);
+  return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+const PERFIL_LABELS: Record<string, Record<string, string>> = {
+  estado_civil: { soltero: "Soltero/a", casado: "Casado/a", union_libre: "Unión libre", separado: "Separado/a", divorciado: "Divorciado/a", viudo: "Viudo/a" },
+  nivel_escolaridad: { ninguno: "Ninguno", primaria: "Primaria", bachillerato: "Bachillerato", tecnico: "Técnico", tecnologo: "Tecnólogo", profesional: "Profesional", especializacion: "Especialización", maestria: "Maestría", doctorado: "Doctorado" },
+  jornada_trabajo: { diurno: "Diurno", nocturno: "Nocturno", mixto: "Mixto", rotativo: "Rotativo" },
+  rango_salarial: { "1_smlv": "1 SMLV", "1_2_smlv": "1-2 SMLV", "2_3_smlv": "2-3 SMLV", "3_5_smlv": "3-5 SMLV", "+5_smlv": "+5 SMLV" },
+  estado_vacunacion: { completo: "Completo", incompleto: "Incompleto", sin_informacion: "Sin información" },
+  actividad_fisica: { nunca: "Nunca", ocasional: "Ocasional", "2_3_semana": "2-3/semana", diario: "Diario" },
+  consumo_tabaco: { no: "No", ex_fumador: "Ex fumador", si: "Sí" },
+  consumo_alcohol: { no: "No", ocasional: "Ocasional", frecuente: "Frecuente" },
+};
+
+function pLabel(field: string, val?: string) {
+  return val ? (PERFIL_LABELS[field]?.[val] ?? val) : "";
+}
+
 export default function Trabajadores() {
-  const { empresa } = useAuth();
+  const { empresa, usuario } = useAuth();
   const { toast } = useToast();
   const [workers, setWorkers] = useState<Trabajador[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,12 +72,17 @@ export default function Trabajadores() {
   const [showModal, setShowModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
+  const canSeePerfil = usuario?.rol === "administrador" || usuario?.rol === "asistente";
+
   const fetchWorkers = useCallback(async () => {
     if (!empresa?.id) return;
     setLoading(true);
+    const selectFields = canSeePerfil
+      ? "id, nombres, apellidos, tipo_documento, numero_documento, cargo, email, estado, fecha_ingreso, verificado_ingreso, verificado_en, fecha_nacimiento, genero, rh, telefono, ciudad, departamento, sede, arl, eps, pension, caja_compensacion, tipo_contrato, tipo_trabajador, fecha_fin_contrato, perfil_sociodemografico"
+      : "id, nombres, apellidos, tipo_documento, numero_documento, cargo, email, estado, fecha_ingreso, verificado_ingreso, verificado_en";
     const { data, error } = await (supabase as any)
       .from("trabajadores")
-      .select("id, nombres, apellidos, tipo_documento, numero_documento, cargo, email, estado, fecha_ingreso, verificado_ingreso, verificado_en")
+      .select(selectFields)
       .eq("empresa_id", empresa.id)
       .order("created_at", { ascending: false });
 
@@ -66,7 +92,50 @@ export default function Trabajadores() {
       setWorkers(data || []);
     }
     setLoading(false);
-  }, [empresa?.id]);
+  }, [empresa?.id, canSeePerfil]);
+
+  // ── Export CSV ─────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const baseHeaders = [
+      "nombres", "apellidos", "tipo_documento", "numero_documento", "cargo",
+      "fecha_ingreso", "estado", "email", "telefono", "genero", "rh",
+      "fecha_nacimiento", "ciudad", "departamento", "sede",
+      "tipo_contrato", "tipo_trabajador", "fecha_fin_contrato",
+      "arl", "eps", "pension", "caja_compensacion",
+    ];
+    const perfilHeaders = canSeePerfil ? [
+      "estado_civil", "nivel_escolaridad", "estrato_socioeconomico",
+      "personas_a_cargo", "tipo_vivienda", "area_trabajo",
+      "jornada_trabajo", "rango_salarial", "estado_vacunacion",
+      "actividad_fisica", "consumo_tabaco", "consumo_alcohol", "antecedentes_salud",
+    ] : [];
+    const allHeaders = [...baseHeaders, ...perfilHeaders];
+
+    const rows = workers.map(w => {
+      const p = (w as any).perfil_sociodemografico ?? {};
+      const base = baseHeaders.map(h => escapeCSVVal((w as any)[h]));
+      const perfil = perfilHeaders.map(h => {
+        const raw = p[h] ?? "";
+        return escapeCSVVal(
+          ["estado_civil","nivel_escolaridad","jornada_trabajo","rango_salarial",
+           "estado_vacunacion","actividad_fisica","consumo_tabaco","consumo_alcohol"].includes(h)
+            ? pLabel(h, raw) : raw
+        );
+      });
+      return [...base, ...perfil].join(",");
+    });
+
+    const csv = [allHeaders.join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `trabajadores_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     if (empresa?.id) fetchWorkers();
@@ -123,6 +192,10 @@ export default function Trabajadores() {
             )}
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport} disabled={workers.length === 0} className="gap-1.5 text-xs h-9">
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              Exportar CSV
+            </Button>
             <Button variant="outline" onClick={() => setShowImport(true)} className="gap-1.5 text-xs h-9">
               <Upload className="w-3.5 h-3.5" aria-hidden="true" />
               Importar CSV

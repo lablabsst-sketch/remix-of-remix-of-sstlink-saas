@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, Pencil, User, Briefcase, Heart, FileText } from "lucide-react";
+import { ArrowLeft, Pencil, User, Briefcase, Heart, FileText, BarChart2, Lock } from "lucide-react";
 import { AddWorkerModal } from "@/components/trabajadores/AddWorkerModal";
 import { DocumentosTrabajador } from "@/components/trabajadores/DocumentosTrabajador";
+import { PerfilSocioModal, type PerfilSocio } from "@/components/trabajadores/PerfilSocioModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -35,18 +36,43 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 mt-4 first:mt-0">{children}</p>;
 }
 
+// Human-readable labels for perfil sociodemográfico values
+const LABELS: Record<string, Record<string, string>> = {
+  estado_civil: { soltero: "Soltero/a", casado: "Casado/a", union_libre: "Unión libre", separado: "Separado/a", divorciado: "Divorciado/a", viudo: "Viudo/a" },
+  nivel_escolaridad: { ninguno: "Ninguno", primaria: "Primaria", bachillerato: "Bachillerato", tecnico: "Técnico", tecnologo: "Tecnólogo", profesional: "Profesional", especializacion: "Especialización", maestria: "Maestría", doctorado: "Doctorado" },
+  estrato_socioeconomico: { "1": "Estrato 1", "2": "Estrato 2", "3": "Estrato 3", "4": "Estrato 4", "5": "Estrato 5", "6": "Estrato 6" },
+  personas_a_cargo: { "0": "0 — Sin personas a cargo", "1": "1 persona", "2": "2 personas", "3": "3 personas", "4": "4 personas", "5+": "5 o más personas" },
+  tipo_vivienda: { propia: "Propia", arrendada: "Arrendada", familiar: "Familiar / sin costo" },
+  jornada_trabajo: { diurno: "Diurno", nocturno: "Nocturno", mixto: "Mixto", rotativo: "Rotativo" },
+  rango_salarial: { "1_smlv": "1 SMLV", "1_2_smlv": "Entre 1 y 2 SMLV", "2_3_smlv": "Entre 2 y 3 SMLV", "3_5_smlv": "Entre 3 y 5 SMLV", "+5_smlv": "Más de 5 SMLV" },
+  estado_vacunacion: { completo: "Esquema completo", incompleto: "Incompleto", sin_informacion: "Sin información" },
+  actividad_fisica: { nunca: "Nunca", ocasional: "Ocasional", "2_3_semana": "2-3 veces/semana", diario: "Diario" },
+  consumo_tabaco: { no: "No consume", ex_fumador: "Ex fumador/a", si: "Sí consume" },
+  consumo_alcohol: { no: "No consume", ocasional: "Ocasional", frecuente: "Frecuente" },
+};
+
+function labelOf(field: string, value?: string | null) {
+  if (!value) return null;
+  return LABELS[field]?.[value] ?? value;
+}
+
 export default function TrabajadorDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { empresa } = useAuth();
+  const { empresa, usuario } = useAuth();
   const [worker, setWorker] = useState<any>(null);
+  const [perfil, setPerfil] = useState<Partial<PerfilSocio>>({});
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [perfilOpen, setPerfilOpen] = useState(false);
+
+  const canSeePerfil = usuario?.rol === "administrador" || usuario?.rol === "asistente";
 
   const fetchWorker = async () => {
     if (!id) return;
     const { data } = await supabase.from("trabajadores").select("*").eq("id", id).single();
     setWorker(data);
+    setPerfil(data?.perfil_sociodemografico ?? {});
     setLoading(false);
   };
 
@@ -57,8 +83,16 @@ export default function TrabajadorDetail() {
   const edad = worker?.fecha_nacimiento
     ? Math.floor((Date.now() - new Date(worker.fecha_nacimiento).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
     : null;
-
   const fmt = (date?: string | null) => date ? format(new Date(date + "T00:00:00"), "dd MMM yyyy", { locale: es }) : null;
+
+  // Antigüedad
+  const antiguedad = worker?.fecha_ingreso ? (() => {
+    const months = Math.floor((Date.now() - new Date(worker.fecha_ingreso).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+    if (months < 1) return "Menos de 1 mes";
+    if (months < 12) return `${months} ${months === 1 ? "mes" : "meses"}`;
+    const yrs = Math.floor(months / 12); const rem = months % 12;
+    return `${yrs} ${yrs === 1 ? "año" : "años"}${rem ? ` y ${rem} ${rem === 1 ? "mes" : "meses"}` : ""}`;
+  })() : null;
 
   if (loading) return (
     <AppLayout>
@@ -119,11 +153,14 @@ export default function TrabajadorDetail() {
 
         {/* Tabs */}
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid grid-cols-4 h-8 w-full">
-            <TabsTrigger value="personal" className="text-[11px] gap-1"><User className="w-3 h-3" />Personal</TabsTrigger>
-            <TabsTrigger value="laboral" className="text-[11px] gap-1"><Briefcase className="w-3 h-3" />Laboral</TabsTrigger>
-            <TabsTrigger value="afiliaciones" className="text-[11px] gap-1"><Heart className="w-3 h-3" />Afiliaciones</TabsTrigger>
-            <TabsTrigger value="documentos" className="text-[11px] gap-1"><FileText className="w-3 h-3" />Documentos</TabsTrigger>
+          <TabsList className={`grid h-8 w-full ${canSeePerfil ? "grid-cols-5" : "grid-cols-4"}`}>
+            <TabsTrigger value="personal"      className="text-[11px] gap-1"><User      className="w-3 h-3" />Personal</TabsTrigger>
+            <TabsTrigger value="laboral"       className="text-[11px] gap-1"><Briefcase className="w-3 h-3" />Laboral</TabsTrigger>
+            <TabsTrigger value="afiliaciones"  className="text-[11px] gap-1"><Heart     className="w-3 h-3" />Afiliaciones</TabsTrigger>
+            <TabsTrigger value="documentos"    className="text-[11px] gap-1"><FileText  className="w-3 h-3" />Documentos</TabsTrigger>
+            {canSeePerfil && (
+              <TabsTrigger value="perfil"      className="text-[11px] gap-1"><BarChart2 className="w-3 h-3" />Perfil S.</TabsTrigger>
+            )}
           </TabsList>
 
           {/* TAB 1 — PERSONAL */}
@@ -174,6 +211,7 @@ export default function TrabajadorDetail() {
                 <InfoRow label="Sede" value={worker.sede} />
                 <InfoRow label="Tipo de trabajador" value={worker.tipo_trabajador ? worker.tipo_trabajador.charAt(0).toUpperCase() + worker.tipo_trabajador.slice(1) : null} />
                 <InfoRow label="Empresa contratista" value={worker.empresa_contratista} />
+                <InfoRow label="Antigüedad" value={antiguedad} />
               </div>
 
               <SectionTitle>Contrato</SectionTitle>
@@ -190,7 +228,6 @@ export default function TrabajadorDetail() {
                 <InfoRow label="Fecha fin contrato" value={fmt(worker.fecha_fin_contrato)} />
               </div>
 
-              {/* Alerta contrato próximo a vencer */}
               {worker.fecha_fin_contrato && (() => {
                 const dias = Math.ceil((new Date(worker.fecha_fin_contrato).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                 if (dias > 0 && dias <= 30) return (
@@ -218,7 +255,6 @@ export default function TrabajadorDetail() {
                 <InfoRow label="Pensión" value={worker.pension} />
                 <InfoRow label="Caja de compensación" value={worker.caja_compensacion} />
               </div>
-
               <div className="mt-4 rounded-lg bg-muted/40 border p-3">
                 <p className="text-[11px] text-muted-foreground">
                   📎 Los documentos de afiliación (planillas, certificados ARL, carné EPS) se gestionan en la pestaña <strong>Documentos</strong>.
@@ -239,9 +275,66 @@ export default function TrabajadorDetail() {
               <DocumentosTrabajador trabajadorId={worker.id} trabajadorNombre={fullName} />
             </div>
           </TabsContent>
+
+          {/* TAB 5 — PERFIL SOCIODEMOGRÁFICO (solo admin/asistente) */}
+          {canSeePerfil && (
+            <TabsContent value="perfil" className="mt-4">
+              <div className="rounded-lg border bg-card p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-semibold">Datos complementarios</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Perfil sociodemográfico — visible solo para administradores y asistentes
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setPerfilOpen(true)} className="gap-1.5 text-xs">
+                    <Pencil className="w-3.5 h-3.5" /> Editar perfil
+                  </Button>
+                </div>
+
+                {/* Variables sociodemográficas */}
+                <SectionTitle>Variables sociodemográficas</SectionTitle>
+                <div className="grid grid-cols-2 gap-x-8">
+                  <InfoRow label="Estado civil" value={labelOf("estado_civil", perfil.estado_civil)} />
+                  <InfoRow label="Nivel de escolaridad" value={labelOf("nivel_escolaridad", perfil.nivel_escolaridad)} />
+                  <InfoRow label="Estrato socioeconómico" value={labelOf("estrato_socioeconomico", perfil.estrato_socioeconomico)} />
+                  <InfoRow label="Personas a cargo" value={labelOf("personas_a_cargo", perfil.personas_a_cargo)} />
+                  <InfoRow label="Tipo de vivienda" value={labelOf("tipo_vivienda", perfil.tipo_vivienda)} />
+                </div>
+
+                {/* Variables laborales */}
+                <SectionTitle>Variables laborales</SectionTitle>
+                <div className="grid grid-cols-2 gap-x-8">
+                  <InfoRow label="Área / departamento" value={perfil.area_trabajo} />
+                  <InfoRow label="Jornada / turno" value={labelOf("jornada_trabajo", perfil.jornada_trabajo)} />
+                  <InfoRow label="Rango salarial" value={labelOf("rango_salarial", perfil.rango_salarial)} />
+                  <InfoRow label="Antigüedad" value={antiguedad} />
+                </div>
+
+                {/* Salud y hábitos */}
+                <SectionTitle>Salud y hábitos</SectionTitle>
+                <div className="grid grid-cols-2 gap-x-8">
+                  <InfoRow label="Estado de vacunación" value={labelOf("estado_vacunacion", perfil.estado_vacunacion)} />
+                  <InfoRow label="Actividad física" value={labelOf("actividad_fisica", perfil.actividad_fisica)} />
+                  <InfoRow label="Consumo de tabaco" value={labelOf("consumo_tabaco", perfil.consumo_tabaco)} />
+                  <InfoRow label="Consumo de alcohol" value={labelOf("consumo_alcohol", perfil.consumo_alcohol)} />
+                </div>
+                <InfoRow label="Antecedentes de salud" value={perfil.antecedentes_salud} />
+
+                {Object.values(perfil).every(v => !v) && (
+                  <div className="mt-4 rounded-lg bg-muted/40 border border-dashed p-4 text-center">
+                    <p className="text-xs text-muted-foreground">Aún no se han ingresado datos del perfil sociodemográfico.</p>
+                    <Button variant="outline" size="sm" onClick={() => setPerfilOpen(true)} className="mt-2 text-xs gap-1.5">
+                      <Pencil className="w-3.5 h-3.5" /> Completar perfil
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
 
-        {/* Modal editar */}
+        {/* Modales */}
         <AddWorkerModal
           open={editOpen}
           onOpenChange={setEditOpen}
@@ -249,6 +342,16 @@ export default function TrabajadorDetail() {
           onSuccess={(updated) => { if (updated) setWorker(updated); }}
           editWorker={worker}
         />
+
+        {canSeePerfil && (
+          <PerfilSocioModal
+            open={perfilOpen}
+            onOpenChange={setPerfilOpen}
+            trabajadorId={worker.id}
+            initial={perfil}
+            onSuccess={(updated) => setPerfil(updated)}
+          />
+        )}
       </div>
     </AppLayout>
   );
